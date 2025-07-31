@@ -14,6 +14,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema, type Task, type InsertTask } from "@shared/task-schema";
 import { type User } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
+import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import Navigation from "@/components/navigation";
 
 // Form interface that matches what react-hook-form expects
 interface TaskFormData {
@@ -27,9 +31,6 @@ interface TaskFormData {
   tags: string[];
   notes?: string;
 }
-import { apiRequest } from "@/lib/queryClient";
-import { format } from "date-fns";
-import { useAuth } from "@/hooks/useAuth";
 
 const urgencyColors = {
   low: "bg-green-100 text-green-800",
@@ -218,16 +219,21 @@ export default function Tasks() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center min-h-[400px]">
-          <div className="text-lg">Loading tasks...</div>
+      <>
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <div className="text-lg">Loading tasks...</div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      <Navigation />
+      <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -570,6 +576,7 @@ export default function Tasks() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
