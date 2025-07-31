@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin } from "./auth";
 import authRoutes from "./auth-routes";
-import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, insertCustomerInquirySchema, insertQuotationRequestSchema, type EmailReport } from "@shared/schema";
+import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, insertCustomerInquirySchema, insertQuotationRequestSchema, insertWorkOrderSchema, insertTicketSchema, type EmailReport } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import nodemailer from "nodemailer";
@@ -1057,6 +1057,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to send Amazon pricing email" });
       }
+    }
+  });
+
+  // Work Orders routes
+  app.get("/api/work-orders", authenticateToken, async (req, res) => {
+    try {
+      const workOrders = await storage.getWorkOrders();
+      res.json(workOrders);
+    } catch (error) {
+      console.error("Error fetching work orders:", error);
+      res.status(500).json({ message: "Failed to fetch work orders" });
+    }
+  });
+
+  app.post("/api/work-orders", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertWorkOrderSchema.parse(req.body);
+      const workOrder = await storage.createWorkOrder(validatedData);
+      res.status(201).json(workOrder);
+    } catch (error) {
+      console.error("Error creating work order:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create work order" });
+      }
+    }
+  });
+
+  app.patch("/api/work-orders/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const workOrder = await storage.updateWorkOrder(id, updates);
+      if (!workOrder) {
+        return res.status(404).json({ message: "Work order not found" });
+      }
+      res.json(workOrder);
+    } catch (error) {
+      console.error("Error updating work order:", error);
+      res.status(500).json({ message: "Failed to update work order" });
+    }
+  });
+
+  app.delete("/api/work-orders/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteWorkOrder(id);
+      if (!success) {
+        return res.status(404).json({ message: "Work order not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting work order:", error);
+      res.status(500).json({ message: "Failed to delete work order" });
+    }
+  });
+
+  // Tickets routes
+  app.get("/api/tickets", authenticateToken, async (req, res) => {
+    try {
+      const tickets = await storage.getTickets();
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+      res.status(500).json({ message: "Failed to fetch tickets" });
+    }
+  });
+
+  app.post("/api/tickets", authenticateToken, async (req, res) => {
+    try {
+      const validatedData = insertTicketSchema.parse(req.body);
+      const ticket = await storage.createTicket(validatedData);
+      
+      // TODO: Send email notification if assigned to a user
+      if (ticket.assignedUserId) {
+        // Add email notification logic here
+      }
+      
+      res.status(201).json(ticket);
+    } catch (error) {
+      console.error("Error creating ticket:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create ticket" });
+      }
+    }
+  });
+
+  app.patch("/api/tickets/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const ticket = await storage.updateTicket(id, updates);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // TODO: Send email notification if assignment changed
+      if (updates.assignedUserId) {
+        // Add email notification logic here
+      }
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error updating ticket:", error);
+      res.status(500).json({ message: "Failed to update ticket" });
+    }
+  });
+
+  app.delete("/api/tickets/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteTicket(id);
+      if (!success) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting ticket:", error);
+      res.status(500).json({ message: "Failed to delete ticket" });
     }
   });
 
