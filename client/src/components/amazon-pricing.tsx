@@ -228,17 +228,17 @@ export function AmazonPricing() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center space-x-2">
-        <DollarSign className="h-6 w-6 text-orange-600" />
-        <h1 className="text-3xl font-bold">Amazon Pricing</h1>
+        <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Amazon Pricing</h1>
       </div>
 
       {/* Warning Alert */}
       <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20">
         <AlertCircle className="h-4 w-4 text-yellow-600" />
-        <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+        <AlertDescription className="text-sm sm:text-base text-yellow-800 dark:text-yellow-200">
           <strong>Important:</strong> Please consider weight and local taxes when finalizing pricing. 
           These factors may affect the total cost and should be added to the calculated selling price.
         </AlertDescription>
@@ -247,13 +247,13 @@ export function AmazonPricing() {
       {/* URL Input Section */}
       {!showPricingForm && (
         <Card>
-          <CardHeader>
-            <CardTitle>Enter Amazon URL</CardTitle>
-            <CardDescription>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-lg sm:text-xl">Enter Amazon URL</CardTitle>
+            <CardDescription className="text-sm">
               Provide a valid Amazon.com product URL to begin pricing calculation
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
             <Form {...urlForm}>
               <form onSubmit={urlForm.handleSubmit((data) => extractMutation.mutate(data))} className="space-y-4">
                 <FormField
@@ -261,11 +261,12 @@ export function AmazonPricing() {
                   name="amazonUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amazon Product URL</FormLabel>
+                      <FormLabel className="text-sm sm:text-base">Amazon Product URL</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="https://amazon.com/product-url" 
                           {...field} 
+                          className="text-sm"
                           data-testid="input-amazon-url"
                         />
                       </FormControl>
@@ -276,6 +277,7 @@ export function AmazonPricing() {
                 <Button 
                   type="submit" 
                   disabled={extractMutation.isPending}
+                  className="w-full sm:w-auto text-sm"
                   data-testid="button-extract-price"
                 >
                   {extractMutation.isPending ? 'Processing...' : 'Extract Product Info'}
@@ -302,15 +304,15 @@ export function AmazonPricing() {
             <Form {...pricingForm}>
               <form onSubmit={pricingForm.handleSubmit((data) => createSessionMutation.mutate(data))} className="space-y-6">
                 {/* Product Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={pricingForm.control}
                     name="productName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Product Name</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Product Name</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-product-name" />
+                          <Input {...field} className="text-sm" data-testid="input-product-name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -321,7 +323,7 @@ export function AmazonPricing() {
                     name="costUsd"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Item Cost (USD)</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Item Cost (USD)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -329,6 +331,7 @@ export function AmazonPricing() {
                             {...field}
                             value={field.value === 0 ? '' : field.value || ''}
                             onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
+                            className="text-sm"
                             data-testid="input-cost-usd"
                           />
                         </FormControl>
@@ -339,16 +342,18 @@ export function AmazonPricing() {
                 </div>
 
                 {/* Pricing Calculations */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={pricingForm.control}
                     name="markupPercentage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>
-                          Markup Percentage 
-                          {costUsd > 100 && <Badge variant="secondary" className="ml-2">120% (Over $100)</Badge>}
-                          {costUsd <= 100 && costUsd > 0 && <Badge variant="outline" className="ml-2">80% (Under $100)</Badge>}
+                        <FormLabel className="text-sm sm:text-base">
+                          <span className="block sm:inline">Markup Percentage</span>
+                          <div className="mt-1 sm:mt-0 sm:ml-2 sm:inline-block">
+                            {costUsd > 100 && <Badge variant="secondary" className="text-xs">120% (Over $100)</Badge>}
+                            {costUsd <= 100 && costUsd > 0 && <Badge variant="outline" className="text-xs">80% (Under $100)</Badge>}
+                          </div>
                         </FormLabel>
                         <FormControl>
                           <Input 
@@ -357,6 +362,7 @@ export function AmazonPricing() {
                             {...field}
                             value={field.value === 0 ? '' : field.value || 80}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 80)}
+                            className="text-sm"
                             data-testid="input-markup-percentage"
                           />
                         </FormControl>
@@ -365,9 +371,9 @@ export function AmazonPricing() {
                     )}
                   />
                   <div className="space-y-2">
-                    <FormLabel>Exchange Rate</FormLabel>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
-                      <span className="text-sm font-mono">
+                    <FormLabel className="text-sm sm:text-base">Exchange Rate</FormLabel>
+                    <div className="p-2 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-md">
+                      <span className="text-xs sm:text-sm font-mono">
                         {exchangeLoading ? 'Loading...' : `$${exchangeRate.toFixed(2)} JMD per USD`}
                       </span>
                     </div>
@@ -375,9 +381,9 @@ export function AmazonPricing() {
                 </div>
 
                 {/* Calculation Results */}
-                <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg space-y-3">
-                  <h4 className="font-semibold text-blue-800 dark:text-blue-200">Pricing Calculations</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-blue-50 dark:bg-blue-950/20 p-3 sm:p-4 rounded-lg space-y-3">
+                  <h4 className="text-sm sm:text-base font-semibold text-blue-800 dark:text-blue-200">Pricing Calculations</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-sm">
                     <div>
                       <span className="text-gray-600 dark:text-gray-400">Amazon Price (Cost + 7%):</span>
                       <div className="font-mono font-semibold">${amazonPrice.toFixed(2)} USD</div>
@@ -388,7 +394,7 @@ export function AmazonPricing() {
                     </div>
                     <div>
                       <span className="text-gray-600 dark:text-gray-400">Selling Price (JMD):</span>
-                      <div className="font-mono font-semibold text-lg text-blue-600 dark:text-blue-400">
+                      <div className="font-mono font-semibold text-base sm:text-lg text-blue-600 dark:text-blue-400">
                         ${sellingPriceJmd.toLocaleString()} JMD
                       </div>
                     </div>
@@ -397,7 +403,7 @@ export function AmazonPricing() {
                         href={extractedProduct.amazonUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                        className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 text-sm"
                       >
                         <ExternalLink className="h-4 w-4" />
                         <span>View on Amazon</span>
@@ -412,11 +418,12 @@ export function AmazonPricing() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormLabel className="text-sm sm:text-base">Notes (Optional)</FormLabel>
                       <FormControl>
                         <Textarea 
                           placeholder="Additional notes about weight, taxes, or special considerations..." 
                           {...field} 
+                          className="text-sm"
                           data-testid="textarea-notes"
                         />
                       </FormControl>
@@ -426,10 +433,11 @@ export function AmazonPricing() {
                 />
 
                 {/* Actions */}
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <Button 
                     type="submit" 
                     disabled={createSessionMutation.isPending}
+                    className="w-full sm:w-auto text-sm"
                     data-testid="button-save-pricing"
                   >
                     {createSessionMutation.isPending ? 'Saving...' : 'Save Pricing'}
@@ -443,6 +451,7 @@ export function AmazonPricing() {
                       urlForm.reset();
                       pricingForm.reset();
                     }}
+                    className="w-full sm:w-auto text-sm"
                     data-testid="button-cancel"
                   >
                     Cancel
@@ -456,38 +465,40 @@ export function AmazonPricing() {
 
       {/* Amazon Pricing History */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <History className="h-5 w-5" />
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+            <History className="h-4 w-4 sm:h-5 sm:w-5" />
             <span>Amazon Pricing History</span>
           </CardTitle>
-          <CardDescription>Previous Amazon pricing calculations</CardDescription>
+          <CardDescription className="text-sm">Previous Amazon pricing calculations</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           {sessionsLoading ? (
-            <div className="text-center py-8">Loading sessions...</div>
+            <div className="text-center py-8 text-sm">Loading sessions...</div>
           ) : sessions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 text-sm">
               No Amazon pricing sessions yet. Create your first pricing calculation above.
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {sessions.map((session: AmazonPricingSession) => (
-                <div key={session.id} className="border rounded-lg p-4 space-y-3" data-testid={`session-${session.id}`}>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <h4 className="font-semibold">{session.productName}</h4>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                        <div>Cost: ${parseFloat(session.costUsd).toFixed(2)} USD</div>
-                        <div>Amazon Price: ${parseFloat(session.amazonPrice).toFixed(2)} USD</div>
-                        <div>Markup: {parseFloat(session.markupPercentage).toFixed(0)}%</div>
-                        <div className="font-semibold text-green-600">
-                          Final Price: ${parseFloat(session.sellingPriceJmd).toLocaleString()} JMD
+                <div key={session.id} className="border rounded-lg p-3 sm:p-4 space-y-3" data-testid={`session-${session.id}`}>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                    <div className="space-y-2 flex-1">
+                      <h4 className="font-semibold text-sm sm:text-base break-words">{session.productName}</h4>
+                      <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="grid grid-cols-2 gap-2 sm:block sm:space-y-1">
+                          <div>Cost: ${parseFloat(session.costUsd).toFixed(2)} USD</div>
+                          <div>Amazon Price: ${parseFloat(session.amazonPrice).toFixed(2)} USD</div>
+                          <div>Markup: {parseFloat(session.markupPercentage).toFixed(0)}%</div>
+                          <div className="font-semibold text-green-600 col-span-2 sm:col-span-1">
+                            Final Price: ${parseFloat(session.sellingPriceJmd).toLocaleString()} JMD
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Badge variant={session.emailSent ? "default" : "secondary"}>
+                    <div className="flex flex-row sm:flex-col items-center gap-2">
+                      <Badge variant={session.emailSent ? "default" : "secondary"} className="text-xs">
                         {session.emailSent ? "Emailed" : "Pending"}
                       </Badge>
                       <Button
@@ -499,14 +510,16 @@ export function AmazonPricing() {
                           emailForm.setValue('subject', `Amazon Pricing Report - ${session.productName}`);
                         }}
                         disabled={sendEmailMutation.isPending}
+                        className="text-xs"
                         data-testid={`button-email-${session.id}`}
                       >
-                        <Mail className="h-4 w-4" />
+                        <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="ml-1 sm:hidden">Email</span>
                       </Button>
                     </div>
                   </div>
                   {session.notes && (
-                    <div className="text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                    <div className="text-xs sm:text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded">
                       <strong>Notes:</strong> {session.notes}
                     </div>
                   )}
@@ -523,24 +536,24 @@ export function AmazonPricing() {
       {/* Email Form Modal */}
       {showEmailForm && selectedSession && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Mail className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+              <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
               <span>Send Email Report</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
             <Form {...emailForm}>
               <form onSubmit={emailForm.handleSubmit((data) => sendEmailMutation.mutate(data))} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={emailForm.control}
                     name="to"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Send To</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Send To</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} data-testid="input-email-to" />
+                          <Input type="email" {...field} className="text-sm" data-testid="input-email-to" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -551,9 +564,9 @@ export function AmazonPricing() {
                     name="subject"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Subject</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Subject</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-email-subject" />
+                          <Input {...field} className="text-sm" data-testid="input-email-subject" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -565,11 +578,12 @@ export function AmazonPricing() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Additional Notes (Optional)</FormLabel>
+                      <FormLabel className="text-sm sm:text-base">Additional Notes (Optional)</FormLabel>
                       <FormControl>
                         <Textarea 
                           placeholder="Any additional information for management..." 
                           {...field} 
+                          className="text-sm"
                           data-testid="textarea-email-notes"
                         />
                       </FormControl>
@@ -577,10 +591,11 @@ export function AmazonPricing() {
                     </FormItem>
                   )}
                 />
-                <div className="flex space-x-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                   <Button 
                     type="submit" 
                     disabled={sendEmailMutation.isPending}
+                    className="w-full sm:w-auto text-sm"
                     data-testid="button-send-email"
                   >
                     {sendEmailMutation.isPending ? 'Sending...' : 'Send Email'}
@@ -589,6 +604,7 @@ export function AmazonPricing() {
                     type="button" 
                     variant="outline" 
                     onClick={() => setShowEmailForm(false)}
+                    className="w-full sm:w-auto text-sm"
                     data-testid="button-cancel-email"
                   >
                     Cancel

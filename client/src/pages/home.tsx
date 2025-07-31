@@ -36,37 +36,41 @@ export default function Home() {
       
       {/* Navigation Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-4">
-              <Button variant="default" className="bg-blue-600 hover:bg-blue-700 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+              <Button variant="default" className="bg-blue-600 hover:bg-blue-700 text-white text-sm">
                 <Upload className="h-4 w-4 mr-2" />
-                PDF Invoice Pricing
+                <span className="hidden sm:inline">PDF Invoice Pricing</span>
+                <span className="sm:hidden">PDF Pricing</span>
               </Button>
               <Link to="/amazon-pricing">
-                <Button variant="outline" className="border-orange-300 text-orange-600 hover:bg-orange-50">
+                <Button variant="outline" className="border-orange-300 text-orange-600 hover:bg-orange-50 text-sm w-full sm:w-auto">
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Amazon Pricing
                 </Button>
               </Link>
             </div>
-            <div className="text-sm text-gray-600">
-              Exchange Rate: <span className="font-semibold">${exchangeRate.toFixed(2)} JMD per USD</span>
+            <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-right">
+              <span className="block sm:inline">Exchange Rate: </span>
+              <span className="font-semibold">${exchangeRate.toFixed(2)} JMD per USD</span>
             </div>
           </div>
         </div>
       </div>
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <Sidebar 
-            activeSection={activeSection}
-            onSectionChange={setActiveSection}
-            exchangeRate={exchangeRate}
-            onExchangeRateChange={setExchangeRate}
-          />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-8">
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <Sidebar 
+              activeSection={activeSection}
+              onSectionChange={setActiveSection}
+              exchangeRate={exchangeRate}
+              onExchangeRateChange={setExchangeRate}
+            />
+          </div>
           
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 order-1 lg:order-2">
             {renderActiveSection()}
           </div>
         </div>

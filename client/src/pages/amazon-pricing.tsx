@@ -11,31 +11,33 @@ export default function AmazonPricingPage() {
       
       {/* Navigation Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex space-x-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
               <Link to="/">
-                <Button variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50">
+                <Button variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50 text-sm w-full sm:w-auto">
                   <Upload className="h-4 w-4 mr-2" />
-                  PDF Invoice Pricing
+                  <span className="hidden sm:inline">PDF Invoice Pricing</span>
+                  <span className="sm:hidden">PDF Pricing</span>
                 </Button>
               </Link>
-              <Button variant="default" className="bg-orange-600 hover:bg-orange-700 text-white">
+              <Button variant="default" className="bg-orange-600 hover:bg-orange-700 text-white text-sm">
                 <ShoppingCart className="h-4 w-4 mr-2" />
                 Amazon Pricing
               </Button>
             </div>
-            <Link to="/">
-              <Button variant="ghost" className="text-gray-600 hover:text-gray-800">
+            <Link to="/" className="sm:block">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-800 text-sm w-full sm:w-auto">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to PDF Pricing
+                <span className="hidden sm:inline">Back to PDF Pricing</span>
+                <span className="sm:hidden">Back</span>
               </Button>
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <AmazonPricing />
       </div>
     </div>
