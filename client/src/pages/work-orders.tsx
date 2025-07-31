@@ -49,7 +49,7 @@ export default function WorkOrdersPage() {
     },
   });
 
-  const { data: workOrders = [], isLoading } = useQuery({
+  const { data: workOrders = [], isLoading } = useQuery<WorkOrder[]>({
     queryKey: ["/api/work-orders"],
   });
 
@@ -143,7 +143,7 @@ export default function WorkOrdersPage() {
       itemDescription: workOrder.itemDescription,
       issue: workOrder.issue,
       status: workOrder.status || "received",
-      assignedUserId: workOrder.assignedUserId || undefined,
+      assignedUserId: workOrder.assignedUserId || "",
       notes: workOrder.notes || "",
     });
   };
@@ -278,7 +278,7 @@ export default function WorkOrdersPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-status">
+                        <Select onValueChange={field.onChange} defaultValue={field.value || "received"} data-testid="select-status">
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select status" />
@@ -317,7 +317,7 @@ export default function WorkOrdersPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Assigned User</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-assigned-user">
+                        <Select onValueChange={field.onChange} defaultValue={field.value || ""} data-testid="select-assigned-user">
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select user" />
