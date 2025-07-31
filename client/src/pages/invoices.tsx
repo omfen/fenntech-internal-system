@@ -237,9 +237,9 @@ export default function Invoices() {
       currency: invoice.currency,
       paymentTerms: invoice.paymentTerms || 'Net 30',
       notes: invoice.notes || '',
-      status: invoice.status,
-      amountPaid: invoice.amountPaid || '0.00',
-      balanceDue: invoice.balanceDue || '0.00',
+      status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
+      amountPaid: (invoice as any).amountPaid || '0.00',
+      balanceDue: (invoice as any).balanceDue || '0.00',
     });
     setIsDialogOpen(true);
   };
@@ -443,10 +443,10 @@ export default function Invoices() {
                       <DollarSign className="h-4 w-4" />
                       <span className="font-semibold">{invoice.currency} {invoice.total}</span>
                     </div>
-                    {parseFloat(invoice.balanceDue || '0') > 0 && (
+                    {parseFloat((invoice as any).balanceDue || '0') > 0 && (
                       <div className="flex items-center gap-2 text-sm text-red-600">
                         <CreditCard className="h-4 w-4" />
-                        <span>Balance: {invoice.currency} {invoice.balanceDue}</span>
+                        <span>Balance: {invoice.currency} {(invoice as any).balanceDue}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between">
@@ -486,8 +486,8 @@ export default function Invoices() {
                         <td className="p-4">{format(new Date(invoice.dueDate), 'MMM d, yyyy')}</td>
                         <td className="p-4 font-semibold">{invoice.currency} {invoice.total}</td>
                         <td className="p-4">
-                          <span className={parseFloat(invoice.balanceDue || '0') > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>
-                            {invoice.currency} {invoice.balanceDue || '0.00'}
+                          <span className={parseFloat((invoice as any).balanceDue || '0') > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>
+                            {invoice.currency} {(invoice as any).balanceDue || '0.00'}
                           </span>
                         </td>
                         <td className="p-4">{getStatusBadge(invoice.status)}</td>

@@ -455,6 +455,8 @@ export const invoices = pgTable("invoices", {
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0.00"),
   discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }).default("0.00"),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  amountPaid: decimal("amount_paid", { precision: 10, scale: 2 }).default("0.00"),
+  balanceDue: decimal("balance_due", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency").notNull().default("JMD"),
   paymentTerms: varchar("payment_terms"),
   notes: text("notes"),

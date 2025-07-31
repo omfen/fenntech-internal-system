@@ -2197,6 +2197,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create sample quotations for testing
+  app.post('/api/quotations/create-sample', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get or create a client first
+      let clients = await storage.getClients();
+      let client = clients[0];
+      
+      if (!client) {
+        client = await storage.createClient({
+          name: "Tech Solutions Ltd",
+          email: "info@techsolutions.com",
+          phone: "+1-876-555-0123",
+          address: "123 Technology Drive\nKingston, Jamaica",
+          contactPerson: "John Smith",
+        });
+      }
+
+      const sampleQuotations = [
+        {
+          clientId: client.id,
+          quoteDate: new Date(),
+          expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          items: [
+            {
+              id: "1",
+              description: "Dell Laptop - Inspiron 15 3000",
+              quantity: 2,
+              unitPrice: 85000,
+              total: 170000
+            },
+            {
+              id: "2", 
+              description: "Wireless Mouse - Logitech M185",
+              quantity: 4,
+              unitPrice: 3500,
+              total: 14000
+            }
+          ],
+          subtotal: "184000.00",
+          gctAmount: "27600.00",
+          discountAmount: "0.00",
+          discountPercentage: "0.00",
+          total: "211600.00",
+          currency: "JMD",
+          notes: "Sample quotation for testing purposes",
+          status: "draft" as const,
+        },
+        {
+          clientId: client.id,
+          quoteDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+          expirationDate: new Date(Date.now() + 23 * 24 * 60 * 60 * 1000), // 23 days from now
+          items: [
+            {
+              id: "1",
+              description: "HP Printer - LaserJet Pro MFP M428fdw",
+              quantity: 1,
+              unitPrice: 65000,
+              total: 65000
+            }
+          ],
+          subtotal: "65000.00",
+          gctAmount: "9750.00",
+          discountAmount: "3250.00",
+          discountPercentage: "5.00",
+          total: "71500.00",
+          currency: "JMD",
+          notes: "Bulk purchase discount applied",
+          status: "sent" as const,
+        }
+      ];
+
+      for (const quotationData of sampleQuotations) {
+        await storage.createQuotation(quotationData);
+      }
+      
+      res.json({ message: "Sample quotations created successfully" });
+    } catch (error) {
+      console.error("Error creating sample quotations:", error);
+      res.status(500).json({ message: "Failed to create sample quotations" });
+    }
+  });
+
+  // Create sample invoices for testing
+  app.post('/api/invoices/create-sample', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      // Get or create a client first
+      let clients = await storage.getClients();
+      let client = clients[0];
+      
+      if (!client) {
+        client = await storage.createClient({
+          name: "Tech Solutions Ltd",
+          email: "info@techsolutions.com",
+          phone: "+1-876-555-0123",
+          address: "123 Technology Drive\nKingston, Jamaica",
+          contactPerson: "John Smith",
+        });
+      }
+
+      const sampleInvoices = [
+        {
+          clientId: client.id,
+          invoiceDate: new Date(),
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+          items: [
+            {
+              id: "1",
+              description: "Website Development Services",
+              quantity: 1,
+              unitPrice: 150000,
+              total: 150000
+            },
+            {
+              id: "2",
+              description: "Domain Registration (1 year)",
+              quantity: 1,
+              unitPrice: 8500,
+              total: 8500
+            }
+          ],
+          subtotal: "158500.00",
+          gctAmount: "23775.00",
+          discountAmount: "0.00",
+          discountPercentage: "0.00",
+          total: "182275.00",
+          currency: "JMD",
+          paymentTerms: "Net 30",
+          notes: "Thank you for your business",
+          status: "sent" as const,
+          amountPaid: "0.00",
+          balanceDue: "182275.00",
+        },
+        {
+          clientId: client.id,
+          invoiceDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+          dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), // 15 days from now
+          items: [
+            {
+              id: "1",
+              description: "Computer Repair Service",
+              quantity: 1,
+              unitPrice: 12000,
+              total: 12000
+            }
+          ],
+          subtotal: "12000.00",
+          gctAmount: "1800.00",
+          discountAmount: "0.00",
+          discountPercentage: "0.00",
+          total: "13800.00",
+          currency: "JMD",
+          paymentTerms: "Net 30",
+          notes: "Hardware diagnosis and repair completed",
+          status: "paid" as const,
+          amountPaid: "13800.00",
+          balanceDue: "0.00",
+        }
+      ];
+
+      for (const invoiceData of sampleInvoices) {
+        await storage.createInvoice(invoiceData);
+      }
+      
+      res.json({ message: "Sample invoices created successfully" });
+    } catch (error) {
+      console.error("Error creating sample invoices:", error);
+      res.status(500).json({ message: "Failed to create sample invoices" });
+    }
+  });
+
   app.patch('/api/notifications/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;

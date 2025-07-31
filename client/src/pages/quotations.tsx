@@ -201,7 +201,7 @@ export default function Quotations() {
       total: quotation.total,
       currency: quotation.currency,
       notes: quotation.notes || '',
-      status: quotation.status,
+      status: quotation.status as 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired',
     });
     setIsDialogOpen(true);
   };
