@@ -138,6 +138,39 @@ export const quotationRequests = pgTable("quotation_requests", {
 export type QuotationRequest = typeof quotationRequests.$inferSelect;
 export type InsertQuotationRequest = typeof quotationRequests.$inferInsert;
 
+// Work Orders table
+export const workOrders = pgTable("work_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerName: varchar("customer_name").notNull(),
+  telephone: varchar("telephone").notNull(),
+  email: varchar("email").notNull(),
+  itemDescription: text("item_description").notNull(),
+  issue: text("issue").notNull(),
+  status: varchar("status").default("pending"), // pending, in_progress, completed
+  assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type WorkOrder = typeof workOrders.$inferSelect;
+export type InsertWorkOrder = typeof workOrders.$inferInsert;
+
+// Tickets table
+export const tickets = pgTable("tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  priority: varchar("priority").default("medium"), // low, medium, high, urgent
+  status: varchar("status").default("open"), // open, in_progress, resolved, closed
+  assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  createdById: varchar("created_by_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = typeof tickets.$inferInsert;
+
 // Validation schemas
 export const insertCustomerInquirySchema = createInsertSchema(customerInquiries).omit({
   id: true,
@@ -151,7 +184,22 @@ export const insertQuotationRequestSchema = createInsertSchema(quotationRequests
   updatedAt: true,
 });
 
+export const insertWorkOrderSchema = createInsertSchema(workOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTicketSchema = createInsertSchema(tickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const urgencyLevels = ["low", "medium", "high", "urgent"] as const;
+export const statusLevels = ["pending", "in_progress", "completed"] as const;
+export const ticketStatusLevels = ["open", "in_progress", "resolved", "closed"] as const;
+export const priorityLevels = ["low", "medium", "high", "urgent"] as const;
 export type Session = typeof sessions.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type UpdateCategory = z.infer<typeof updateCategorySchema>;

@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./auth";
@@ -46,6 +46,21 @@ export interface IStorage {
   createQuotationRequest(request: InsertQuotationRequest): Promise<QuotationRequest>;
   updateQuotationRequest(id: string, updates: Partial<QuotationRequest>): Promise<QuotationRequest | undefined>;
   deleteQuotationRequest(id: string): Promise<boolean>;
+
+  // Work Orders
+  getWorkOrders(): Promise<WorkOrder[]>;
+  getWorkOrderById(id: string): Promise<WorkOrder | undefined>;
+  createWorkOrder(workOrder: InsertWorkOrder): Promise<WorkOrder>;
+  updateWorkOrder(id: string, updates: Partial<WorkOrder>): Promise<WorkOrder | undefined>;
+  deleteWorkOrder(id: string): Promise<boolean>;
+
+  // Tickets
+  getTickets(): Promise<Ticket[]>;
+  getTicketById(id: string): Promise<Ticket | undefined>;
+  createTicket(ticket: InsertTicket): Promise<Ticket>;
+  updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket | undefined>;
+  deleteTicket(id: string): Promise<boolean>;
+  getTicketsByAssignedUser(userId: string): Promise<Ticket[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -271,6 +286,66 @@ export class DatabaseStorage implements IStorage {
       .update(amazonPricingSessions)
       .set({ emailSent: new Date() })
       .where(eq(amazonPricingSessions.id, id));
+  }
+
+  // Work Orders
+  async getWorkOrders(): Promise<WorkOrder[]> {
+    return await db.select().from(workOrders).orderBy(workOrders.createdAt);
+  }
+
+  async getWorkOrderById(id: string): Promise<WorkOrder | undefined> {
+    const [workOrder] = await db.select().from(workOrders).where(eq(workOrders.id, id));
+    return workOrder || undefined;
+  }
+
+  async createWorkOrder(workOrder: InsertWorkOrder): Promise<WorkOrder> {
+    const [newWorkOrder] = await db.insert(workOrders).values(workOrder).returning();
+    return newWorkOrder;
+  }
+
+  async updateWorkOrder(id: string, updates: Partial<WorkOrder>): Promise<WorkOrder | undefined> {
+    const [workOrder] = await db.update(workOrders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(workOrders.id, id))
+      .returning();
+    return workOrder || undefined;
+  }
+
+  async deleteWorkOrder(id: string): Promise<boolean> {
+    const result = await db.delete(workOrders).where(eq(workOrders.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Tickets
+  async getTickets(): Promise<Ticket[]> {
+    return await db.select().from(tickets).orderBy(tickets.createdAt);
+  }
+
+  async getTicketById(id: string): Promise<Ticket | undefined> {
+    const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
+    return ticket || undefined;
+  }
+
+  async createTicket(ticket: InsertTicket): Promise<Ticket> {
+    const [newTicket] = await db.insert(tickets).values(ticket).returning();
+    return newTicket;
+  }
+
+  async updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket | undefined> {
+    const [ticket] = await db.update(tickets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tickets.id, id))
+      .returning();
+    return ticket || undefined;
+  }
+
+  async deleteTicket(id: string): Promise<boolean> {
+    const result = await db.delete(tickets).where(eq(tickets.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getTicketsByAssignedUser(userId: string): Promise<Ticket[]> {
+    return await db.select().from(tickets).where(eq(tickets.assignedUserId, userId)).orderBy(tickets.createdAt);
   }
 
   // Initialize with predefined categories if none exist
