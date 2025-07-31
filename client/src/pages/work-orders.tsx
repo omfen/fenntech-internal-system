@@ -143,7 +143,7 @@ export default function WorkOrdersPage() {
       itemDescription: workOrder.itemDescription,
       issue: workOrder.issue,
       status: workOrder.status || "received",
-      assignedUserId: workOrder.assignedUserId || "",
+      assignedUserId: workOrder.assignedUserId || "unassigned",
       notes: workOrder.notes || "",
     });
   };
@@ -324,7 +324,7 @@ export default function WorkOrdersPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
                             {users.map((user: any) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.firstName} {user.lastName}
