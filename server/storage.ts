@@ -311,6 +311,13 @@ export class DatabaseStorage implements IStorage {
     return workOrder || undefined;
   }
 
+  async updateWorkOrderEmailSent(id: string): Promise<void> {
+    await db
+      .update(workOrders)
+      .set({ lastEmailSent: new Date() })
+      .where(eq(workOrders.id, id));
+  }
+
   async deleteWorkOrder(id: string): Promise<boolean> {
     const result = await db.delete(workOrders).where(eq(workOrders.id, id));
     return (result.rowCount ?? 0) > 0;

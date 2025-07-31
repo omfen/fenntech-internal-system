@@ -25,6 +25,7 @@ const formSchema = insertWorkOrderSchema.extend({
   email: z.string().email("Please enter a valid email"),
   itemDescription: z.string().min(1, "Item description is required"),
   issue: z.string().min(1, "Issue description is required"),
+  notes: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -43,7 +44,8 @@ export default function WorkOrdersPage() {
       email: "",
       itemDescription: "",
       issue: "",
-      status: "pending",
+      status: "received",
+      notes: "",
     },
   });
 
@@ -78,8 +80,8 @@ export default function WorkOrdersPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<WorkOrder> }) => {
-      return await apiRequest(`/api/work-orders/${id}`, "PATCH", data);
+    mutationFn: async ({ id, data, sendEmail }: { id: string; data: Partial<WorkOrder>; sendEmail?: boolean }) => {
+      return await apiRequest(`/api/work-orders/${id}`, "PATCH", { ...data, sendStatusEmail: sendEmail });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/work-orders"] });
@@ -121,7 +123,9 @@ export default function WorkOrdersPage() {
 
   const onSubmit = (data: FormData) => {
     if (editingWorkOrder) {
-      updateMutation.mutate({ id: editingWorkOrder.id, data });
+      // Check if status changed to determine if we should send email
+      const statusChanged = editingWorkOrder.status !== data.status;
+      updateMutation.mutate({ id: editingWorkOrder.id, data, sendEmail: statusChanged });
     } else {
       createMutation.mutate(data);
     }
@@ -135,8 +139,9 @@ export default function WorkOrdersPage() {
       email: workOrder.email,
       itemDescription: workOrder.itemDescription,
       issue: workOrder.issue,
-      status: workOrder.status || "pending",
+      status: workOrder.status || "received",
       assignedUserId: workOrder.assignedUserId || undefined,
+      notes: workOrder.notes || "",
     });
   };
 
@@ -148,12 +153,16 @@ export default function WorkOrdersPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "pending":
-        return <Badge variant="outline" className="text-yellow-600 border-yellow-300"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case "received":
+        return <Badge variant="outline" className="text-blue-600 border-blue-300"><Clock className="h-3 w-3 mr-1" />Received</Badge>;
       case "in_progress":
-        return <Badge variant="outline" className="text-blue-600 border-blue-300"><AlertCircle className="h-3 w-3 mr-1" />In Progress</Badge>;
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-300"><AlertCircle className="h-3 w-3 mr-1" />In Progress</Badge>;
+      case "testing":
+        return <Badge variant="outline" className="text-purple-600 border-purple-300"><AlertCircle className="h-3 w-3 mr-1" />Testing</Badge>;
+      case "ready_for_pickup":
+        return <Badge variant="outline" className="text-green-600 border-green-300"><CheckCircle className="h-3 w-3 mr-1" />Ready for Pickup</Badge>;
       case "completed":
-        return <Badge variant="outline" className="text-green-600 border-green-300"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
+        return <Badge variant="outline" className="text-gray-600 border-gray-300"><CheckCircle className="h-3 w-3 mr-1" />Completed</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -273,11 +282,27 @@ export default function WorkOrdersPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="received">Received</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="testing">Testing</SelectItem>
+                            <SelectItem value="ready_for_pickup">Ready for Pickup</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Add any notes or updates" {...field} data-testid="input-notes" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -394,11 +419,25 @@ export default function WorkOrdersPage() {
                     <p className="text-sm font-medium text-gray-600">Issue</p>
                     <p className="text-sm">{workOrder.issue}</p>
                   </div>
+
+                  {workOrder.notes && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Notes</p>
+                      <p className="text-sm">{workOrder.notes}</p>
+                    </div>
+                  )}
                   
                   <div>
                     <p className="text-sm font-medium text-gray-600">Assigned To</p>
                     <p className="text-sm">{getUserName(workOrder.assignedUserId)}</p>
                   </div>
+
+                  {workOrder.lastEmailSent && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Last Email Sent</p>
+                      <p className="text-sm">{new Date(workOrder.lastEmailSent).toLocaleDateString()}</p>
+                    </div>
+                  )}
                   
                   <div>
                     <p className="text-sm font-medium text-gray-600">Created</p>

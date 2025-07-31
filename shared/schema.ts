@@ -146,8 +146,10 @@ export const workOrders = pgTable("work_orders", {
   email: varchar("email").notNull(),
   itemDescription: text("item_description").notNull(),
   issue: text("issue").notNull(),
-  status: varchar("status").default("pending"), // pending, in_progress, completed
+  status: varchar("status").default("received"), // received, in_progress, testing, ready_for_pickup, completed
   assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  notes: text("notes").default(""),
+  lastEmailSent: timestamp("last_email_sent"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

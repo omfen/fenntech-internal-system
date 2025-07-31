@@ -1090,10 +1090,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updates = req.body;
-      const workOrder = await storage.updateWorkOrder(id, updates);
+      const { sendStatusEmail, ...workOrderUpdates } = updates;
+      
+      const workOrder = await storage.updateWorkOrder(id, workOrderUpdates);
       if (!workOrder) {
         return res.status(404).json({ message: "Work order not found" });
       }
+
+      // Send status update email if requested
+      if (sendStatusEmail && workOrder.status) {
+        try {
+          await sendWorkOrderStatusEmail(workOrder);
+          await storage.updateWorkOrderEmailSent(id);
+        } catch (emailError) {
+          console.error("Error sending status email:", emailError);
+          // Don't fail the update if email fails
+        }
+      }
+
       res.json(workOrder);
     } catch (error) {
       console.error("Error updating work order:", error);
@@ -1181,6 +1195,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete ticket" });
     }
   });
+
+  // Helper function to send work order status emails
+  async function sendWorkOrderStatusEmail(workOrder: any) {
+    const statusMessages = {
+      received: {
+        subject: "Work Order Received - FennTech",
+        message: "We have received your item and work order. Our technicians will begin diagnosis shortly.",
+        nextStep: "We will contact you once we have completed the initial diagnosis."
+      },
+      in_progress: {
+        subject: "Work Order In Progress - FennTech", 
+        message: "Our technicians are now working on your item.",
+        nextStep: "We will update you on our progress and notify you when testing begins."
+      },
+      testing: {
+        subject: "Work Order Testing Phase - FennTech",
+        message: "We have completed the repairs and are now testing your item to ensure everything is working properly.",
+        nextStep: "Once testing is complete, we will contact you for pickup."
+      },
+      ready_for_pickup: {
+        subject: "Work Order Ready for Pickup - FennTech",
+        message: "Great news! Your item has been repaired and tested successfully. It is now ready for pickup.",
+        nextStep: "Please contact us at your convenience to arrange pickup. Our business hours are Monday-Friday 9AM-5PM."
+      },
+      completed: {
+        subject: "Work Order Completed - FennTech",
+        message: "Your work order has been completed and the item has been returned to you.",
+        nextStep: "Thank you for choosing FennTech. If you have any questions or concerns, please don't hesitate to contact us."
+      }
+    };
+
+    const statusInfo = statusMessages[workOrder.status as keyof typeof statusMessages];
+    if (!statusInfo) return;
+
+    const htmlContent = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #2563eb; margin: 0;">FennTech</h1>
+              <p style="color: #666; margin: 5px 0;">Professional IT Services</p>
+            </div>
+            
+            <h2 style="color: #2563eb;">Work Order Status Update</h2>
+            
+            <p>Dear ${workOrder.customerName},</p>
+            
+            <p>${statusInfo.message}</p>
+            
+            <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+              <h3 style="margin-top: 0; color: #2563eb;">Work Order Details</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; width: 30%;">Item:</td>
+                  <td style="padding: 8px 0;">${workOrder.itemDescription}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Issue:</td>
+                  <td style="padding: 8px 0;">${workOrder.issue}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Status:</td>
+                  <td style="padding: 8px 0;">
+                    <span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-weight: bold;">
+                      ${workOrder.status.replace('_', ' ').toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+                ${workOrder.notes ? `
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Notes:</td>
+                  <td style="padding: 8px 0;">${workOrder.notes}</td>
+                </tr>
+                ` : ''}
+              </table>
+            </div>
+            
+            <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h4 style="margin-top: 0; color: #1d4ed8;">Next Steps</h4>
+              <p style="margin-bottom: 0;">${statusInfo.nextStep}</p>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+              <p><strong>Contact Information:</strong></p>
+              <p>Phone: ${workOrder.telephone}<br>
+              Email: ${workOrder.email}</p>
+              
+              <p style="margin-top: 20px;">
+                If you have any questions, please don't hesitate to contact us.<br>
+                Best regards,<br>
+                <strong>FennTech Support Team</strong>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntech.com',
+      to: workOrder.email,
+      subject: statusInfo.subject,
+      html: htmlContent,
+    });
+  }
 
   const httpServer = createServer(app);
   return httpServer;
