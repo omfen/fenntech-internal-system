@@ -569,6 +569,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: 'AmazonBasics Laptop Computer Backpack - 17 Inch',
           price: 24.49
         },
+        'B088P6RXJY': {
+          name: 'Logitech C920x HD Pro Webcam Full HD 1080p',
+          price: 69.99
+        },
       };
 
       // Check if we have this product in our database
@@ -609,40 +613,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to extract product name from Amazon URL
   async function extractProductNameFromUrl(amazonUrl: string, asin: string): Promise<string> {
     try {
-      // Try to extract product name from URL path
-      const urlParts = amazonUrl.split('/');
+      // Clean URL by removing query parameters first
+      const cleanUrl = amazonUrl.split('?')[0];
+      const urlParts = cleanUrl.split('/');
       let titlePart = '';
       
       // Look for title in URL structure - Amazon URLs often have format like:
       // /Product-Name-Keywords/dp/ASIN or /dp/ASIN/Product-Name-Keywords
       for (let i = 0; i < urlParts.length; i++) {
         const part = urlParts[i];
-        if (part === 'dp') {
-          // Check the part before dp for product title
-          if (i > 0 && urlParts[i - 1].length > 5 && 
-              !urlParts[i - 1].includes('amazon') && 
-              !urlParts[i - 1].includes('www') &&
-              urlParts[i - 1].includes('-')) {
-            titlePart = urlParts[i - 1];
-            break;
-          }
-          // Check the part after dp/ASIN for product title
-          if (i + 2 < urlParts.length && urlParts[i + 2].length > 10 && 
-              urlParts[i + 2].includes('-')) {
-            titlePart = urlParts[i + 2];
-            break;
-          }
-        } else if (part.length > 15 && part.includes('-') && 
-                   !part.includes('amazon') && 
-                   !part.includes('dp') && 
-                   !part.includes('ref') &&
-                   !part.includes('=') &&
-                   !part.includes('?') &&
-                   !part.includes('gp') &&
-                   !part.includes('B0') &&
-                   !part.includes('B1') &&
-                   part.split('-').length >= 3) {
-          // Look for long parts with dashes that look like product titles
+        
+        // Skip parts that are clearly not product titles
+        if (!part || part.length < 5 || 
+            part.includes('amazon') || 
+            part.includes('www') ||
+            part.includes('ref=') ||
+            part.startsWith('ref=') ||
+            part.includes('dp') ||
+            part.includes('gp') ||
+            part === asin ||
+            part.startsWith('B0') ||
+            part.startsWith('B1') ||
+            part.match(/^[0-9]+$/)) {
+          continue;
+        }
+        
+        // Look for parts that contain dashes (typical of Amazon product URLs)
+        if (part.includes('-') && part.split('-').length >= 3) {
           titlePart = part;
           break;
         }
@@ -654,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .replace(/-/g, ' ')
           .replace(/\+/g, ' ')
           .replace(/%20/g, ' ')
-          .replace(/\?.*$/, '') // Remove query parameters
+          .replace(/\?.*$/, '') // Remove any remaining query parameters
           .replace(/\/.*$/, '') // Remove anything after slash
           .split(' ')
           .filter(word => word.length > 0 && !word.match(/^[0-9]+$/)) // Remove empty words and numbers-only words
