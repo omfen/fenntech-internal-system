@@ -9,7 +9,7 @@ This is a complete full-stack web application for inventory pricing and manageme
 
 Both systems generate email reports to management and maintain comprehensive pricing history. The application features a modern React frontend with Node.js/Express backend using PostgreSQL for persistent storage.
 
-**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.** **Latest: Customer product inquiries, quotation management, work orders with automated status email notifications, tickets system, and call logs all fully implemented with status management and navigation reorganized under "Customers" section.**
+**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.** **Latest: Customer product inquiries, quotation management, work orders with automated status email notifications, tickets system, call logs, and comprehensive task management system all fully implemented. Enhanced user management now supports multiple email domains (@fenntechltd.com, @876get.com) with admin authentication for other domains.**
 
 ## User Preferences
 
@@ -74,23 +74,25 @@ The application follows a monorepo structure with clear separation between clien
 #### Authentication & User Management System
 13. **Complete User Authentication**: Secure JWT-based login/registration system with bcryptjs password hashing
 14. **Role-Based Access Control**: Administrator and User roles with appropriate permissions and restrictions
-15. **Email Domain Restriction**: Only @fenntechltd.com email addresses allowed for registration
-16. **Admin User Management**: Full CRUD operations for user accounts - view, edit roles, activate/deactivate, and delete users
-17. **Security Features**: Protection against self-demotion/deletion, secure session management, and token-based API authentication
-18. **Default Admin Account**: Pre-created administrator account (admin@fenntechltd.com / FennTech2024!) for initial system access
+15. **Multi-Domain Email Support**: Supports @fenntechltd.com and @876get.com email addresses for automatic registration, with admin authentication required for other domains
+16. **Admin User Management**: Full CRUD operations for user accounts - view, edit roles, activate/deactivate, delete users, and create users from any domain
+17. **User Approval System**: Users from non-approved domains require admin approval before gaining access
+18. **Security Features**: Protection against self-demotion/deletion, secure session management, and token-based API authentication
+19. **Default Admin Account**: Pre-created administrator account (admin@fenntechltd.com / FennTech2024!) for initial system access
 
-#### Customer Management Features
+#### Customer Management & Internal Operations Features
 19. **Customer Product Inquiries**: Track customer name, telephone, and product items they're asking about
 20. **Request for Quotation**: Manage customer quotation requests with contact details, email, quote description, and urgency levels (low, medium, high, urgent)
 21. **Work Orders System**: Complete job tracking with status workflow (received → in_progress → testing → ready_for_pickup → completed)
 22. **Automated Status Email Notifications**: Customers receive professional emails at each status change with detailed work order information and next steps
 23. **Work Order Notes System**: Technicians can add and update notes throughout the repair process
 24. **Tickets System**: Internal issue tracking with priority levels (low, medium, high, urgent) and user assignment capabilities
-25. **Full CRUD Operations**: Create, view, edit, and delete work orders, tickets, customer inquiries, quotation requests, and call logs
-26. **Call Log System**: Track incoming and outgoing customer calls with purpose, duration, outcome, and follow-up dates
-27. **Status Management with History**: All customer interactions have status tracking with timestamps and audit trails
-28. **Navigation Reorganization**: Customer features grouped under unified "Customers" dropdown for better organization
-29. **Mobile-Responsive Design**: Card-based layouts optimized for mobile viewing and interaction
+25. **Task Management System**: Comprehensive task tracking with urgency levels (low, medium, high, urgent), priority levels (low, normal, high, critical), assignment capabilities, due dates, and completion logging with automatic status tracking and audit trails
+26. **Full CRUD Operations**: Create, view, edit, and delete work orders, tickets, customer inquiries, quotation requests, call logs, and tasks
+27. **Call Log System**: Track incoming and outgoing customer calls with purpose, duration, outcome, and follow-up dates
+28. **Status Management with History**: All customer interactions and tasks have status tracking with timestamps and audit trails
+29. **Navigation Reorganization**: Customer features grouped under unified "Customers" dropdown for better organization
+30. **Mobile-Responsive Design**: Card-based layouts optimized for mobile viewing and interaction
 
 #### Shared Features
 30. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)

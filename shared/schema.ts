@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   role: varchar("role").notNull().default("user"),
   isActive: boolean("is_active").notNull().default(true),
+  requiresAdminApproval: boolean("requires_admin_approval").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -89,11 +90,26 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 }).extend({
   email: z.string().email().refine(
-    (email) => email.endsWith("@fenntechltd.com"),
-    { message: "Email must be from @fenntechltd.com domain" }
+    (email) => {
+      const allowedDomains = ["@fenntechltd.com", "@876get.com"];
+      return allowedDomains.some(domain => email.endsWith(domain));
+    },
+    { message: "Email must be from @fenntechltd.com or @876get.com domain" }
   ),
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(userRoles),
+});
+
+// Admin user creation schema (allows any domain)
+export const adminCreateUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  email: z.string().email(),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  role: z.enum(userRoles),
+  requiresAdminApproval: z.boolean().default(false),
 });
 
 export const loginSchema = z.object({
@@ -108,8 +124,75 @@ export const updateCategorySchema = insertCategorySchema.extend({
 export type Category = typeof categories.$inferSelect;
 export type User = typeof users.$inferSelect;
 
-// Export task schemas
-export * from "./task-schema";
+// Tasks table
+export const tasks = pgTable("tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  urgencyLevel: varchar("urgency_level", { length: 50 }).notNull().default("medium"), // low, medium, high, urgent
+  status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, in_progress, completed, cancelled
+  assignedUserId: varchar("assigned_user_id"),
+  assignedUserName: varchar("assigned_user_name"),
+  createdById: varchar("created_by_id").notNull(),
+  createdByName: varchar("created_by_name").notNull(),
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  notes: text("notes"),
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"), // low, normal, high, critical
+});
+
+// Task logs table for tracking task activity
+export const taskLogs = pgTable("task_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  taskId: varchar("task_id").notNull(),
+  action: varchar("action", { length: 100 }).notNull(), // created, updated, assigned, completed, commented
+  description: text("description").notNull(),
+  userId: varchar("user_id").notNull(),
+  userName: varchar("user_name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+});
+
+// Zod schemas for tasks
+export const insertTaskSchema = createInsertSchema(tasks, {
+  title: z.string().min(1, "Title is required").max(255, "Title too long"),
+  description: z.string().optional(),
+  urgencyLevel: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  status: z.enum(["pending", "in_progress", "completed", "cancelled"]).default("pending"),
+  priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
+  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  tags: z.array(z.string()).default([]),
+  notes: z.string().optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  createdById: true,
+  createdByName: true,
+});
+
+export const updateTaskSchema = insertTaskSchema.partial();
+
+export const insertTaskLogSchema = createInsertSchema(taskLogs, {
+  action: z.string().min(1, "Action is required"),
+  description: z.string().min(1, "Description is required"),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export type TaskLog = typeof taskLogs.$inferSelect;
+export type InsertTaskLog = z.infer<typeof insertTaskLogSchema>;
+
+
 
 // Customer Product Inquiries table
 export const customerInquiries = pgTable("customer_inquiries", {

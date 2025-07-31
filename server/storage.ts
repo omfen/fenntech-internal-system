@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./auth";
@@ -68,6 +68,20 @@ export interface IStorage {
   createCallLog(callLog: InsertCallLog): Promise<CallLog>;
   updateCallLog(id: string, updates: Partial<CallLog>): Promise<CallLog | undefined>;
   deleteCallLog(id: string): Promise<boolean>;
+
+  // Tasks
+  getTasks(): Promise<Task[]>;
+  getTaskById(id: string): Promise<Task | undefined>;
+  createTask(taskData: InsertTask & { createdById: string; createdByName: string }): Promise<Task>;
+  updateTask(id: string, updates: UpdateTask & { updatedById?: string; updatedByName?: string }): Promise<Task | null>;
+  deleteTask(id: string): Promise<boolean>;
+  getTaskLogs(taskId: string): Promise<TaskLog[]>;
+  createTaskLog(logData: InsertTaskLog): Promise<TaskLog>;
+
+  // Admin user management
+  adminCreateUser(userData: InsertUser & { requiresAdminApproval?: boolean }): Promise<User>;
+  getUsersPendingApproval(): Promise<User[]>;
+  approveUser(id: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -84,14 +98,54 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(userData: InsertUser): Promise<User> {
     const hashedPassword = await hashPassword(userData.password);
+    
+    // Check if email requires admin approval
+    const requiresApproval = !userData.email.endsWith("@fenntechltd.com") && 
+                            !userData.email.endsWith("@876get.com");
+    
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
         password: hashedPassword,
+        requiresAdminApproval: requiresApproval,
+        isActive: !requiresApproval, // Auto-activate for allowed domains
       })
       .returning();
     return user;
+  }
+
+  // Admin create user (allows any domain)
+  async adminCreateUser(userData: InsertUser & { requiresAdminApproval?: boolean }): Promise<User> {
+    const hashedPassword = await hashPassword(userData.password);
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        password: hashedPassword,
+        requiresAdminApproval: userData.requiresAdminApproval || false,
+        isActive: true, // Admin can create active users
+      })
+      .returning();
+    return user;
+  }
+
+  // Get users pending approval
+  async getUsersPendingApproval(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.requiresAdminApproval, true));
+  }
+
+  // Approve user
+  async approveUser(id: string): Promise<User | undefined> {
+    const [user] = await db.update(users)
+      .set({ 
+        requiresAdminApproval: false,
+        isActive: true,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
@@ -335,6 +389,63 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(tickets).orderBy(tickets.createdAt);
   }
 
+
+
+  async getTicketById(id: string): Promise<Ticket | undefined> {
+    const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
+    return ticket || undefined;
+  }
+
+  async createTicket(ticket: InsertTicket): Promise<Ticket> {
+    const [newTicket] = await db.insert(tickets).values(ticket).returning();
+    return newTicket;
+  }
+
+  async updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket | undefined> {
+    const [ticket] = await db.update(tickets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tickets.id, id))
+      .returning();
+    return ticket || undefined;
+  }
+
+  async deleteTicket(id: string): Promise<boolean> {
+    const result = await db.delete(tickets).where(eq(tickets.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getTicketsByAssignedUser(userId: string): Promise<Ticket[]> {
+    return await db.select().from(tickets).where(eq(tickets.assignedUserId, userId)).orderBy(tickets.createdAt);
+  }
+
+  // Call Logs operations
+  async getCallLogs(): Promise<CallLog[]> {
+    return await db.select().from(callLogs).orderBy(callLogs.createdAt);
+  }
+
+  async getCallLogById(id: string): Promise<CallLog | undefined> {
+    const [callLog] = await db.select().from(callLogs).where(eq(callLogs.id, id));
+    return callLog || undefined;
+  }
+
+  async createCallLog(callLog: InsertCallLog): Promise<CallLog> {
+    const [newCallLog] = await db.insert(callLogs).values(callLog).returning();
+    return newCallLog;
+  }
+
+  async updateCallLog(id: string, updates: Partial<CallLog>): Promise<CallLog | undefined> {
+    const [callLog] = await db.update(callLogs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(callLogs.id, id))
+      .returning();
+    return callLog || undefined;
+  }
+
+  async deleteCallLog(id: string): Promise<boolean> {
+    const result = await db.delete(callLogs).where(eq(callLogs.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
   // Tasks
   async getTasks(): Promise<Task[]> {
     return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
@@ -409,61 +520,6 @@ export class DatabaseStorage implements IStorage {
   async createTaskLog(logData: InsertTaskLog): Promise<TaskLog> {
     const [log] = await db.insert(taskLogs).values(logData).returning();
     return log;
-  }
-
-  async getTicketById(id: string): Promise<Ticket | undefined> {
-    const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
-    return ticket || undefined;
-  }
-
-  async createTicket(ticket: InsertTicket): Promise<Ticket> {
-    const [newTicket] = await db.insert(tickets).values(ticket).returning();
-    return newTicket;
-  }
-
-  async updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket | undefined> {
-    const [ticket] = await db.update(tickets)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(tickets.id, id))
-      .returning();
-    return ticket || undefined;
-  }
-
-  async deleteTicket(id: string): Promise<boolean> {
-    const result = await db.delete(tickets).where(eq(tickets.id, id));
-    return (result.rowCount ?? 0) > 0;
-  }
-
-  async getTicketsByAssignedUser(userId: string): Promise<Ticket[]> {
-    return await db.select().from(tickets).where(eq(tickets.assignedUserId, userId)).orderBy(tickets.createdAt);
-  }
-
-  // Call Logs operations
-  async getCallLogs(): Promise<CallLog[]> {
-    return await db.select().from(callLogs).orderBy(callLogs.createdAt);
-  }
-
-  async getCallLogById(id: string): Promise<CallLog | undefined> {
-    const [callLog] = await db.select().from(callLogs).where(eq(callLogs.id, id));
-    return callLog || undefined;
-  }
-
-  async createCallLog(callLog: InsertCallLog): Promise<CallLog> {
-    const [newCallLog] = await db.insert(callLogs).values(callLog).returning();
-    return newCallLog;
-  }
-
-  async updateCallLog(id: string, updates: Partial<CallLog>): Promise<CallLog | undefined> {
-    const [callLog] = await db.update(callLogs)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(callLogs.id, id))
-      .returning();
-    return callLog || undefined;
-  }
-
-  async deleteCallLog(id: string): Promise<boolean> {
-    const result = await db.delete(callLogs).where(eq(callLogs.id, id));
-    return (result.rowCount ?? 0) > 0;
   }
 
   // Initialize with predefined categories if none exist

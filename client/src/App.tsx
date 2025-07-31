@@ -13,6 +13,7 @@ import QuotationRequests from "@/pages/quotation-requests";
 import WorkOrders from "@/pages/work-orders";
 import CallLogs from "@/pages/call-logs";
 import Tickets from "@/pages/tickets";
+import Tasks from "@/pages/tasks";
 import HelpPage from "@/pages/help";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
@@ -47,6 +48,7 @@ function AuthenticatedRouter() {
       <Route path="/work-orders" component={WorkOrders} />
       <Route path="/call-logs" component={CallLogs} />
       <Route path="/tickets" component={Tickets} />
+      <Route path="/tasks" component={Tasks} />
       <Route path="/help" component={HelpPage} />
       <Route component={NotFound} />
     </Switch>

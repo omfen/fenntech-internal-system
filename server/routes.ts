@@ -1262,6 +1262,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Tasks routes
+  app.get("/api/tasks", authenticateToken, async (req, res) => {
+    try {
+      const tasks = await storage.getTasks();
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json({ error: "Failed to fetch tasks" });
+    }
+  });
+
+  app.post("/api/tasks", authenticateToken, async (req, res) => {
+    try {
+      const user = req.user as User;
+      const taskData = {
+        ...req.body,
+        createdById: user.id,
+        createdByName: `${user.firstName} ${user.lastName}`,
+      };
+      
+      // Set assigned user name if assigning
+      if (taskData.assignedUserId && !taskData.assignedUserName) {
+        const assignedUser = await storage.getUserById(taskData.assignedUserId);
+        if (assignedUser) {
+          taskData.assignedUserName = `${assignedUser.firstName} ${assignedUser.lastName}`;
+        }
+      }
+      
+      const task = await storage.createTask(taskData);
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ error: "Failed to create task" });
+    }
+  });
+
+  app.patch("/api/tasks/:id", authenticateToken, async (req, res) => {
+    try {
+      const task = await storage.updateTask(req.params.id, req.body);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      res.json(task);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  app.delete("/api/tasks/:id", authenticateToken, async (req, res) => {
+    try {
+      const success = await storage.deleteTask(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ error: "Failed to delete task" });
+    }
+  });
+
+  // Admin routes for user management
+  app.post("/api/admin/users", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const user = await storage.adminCreateUser(req.body);
+      res.json(user);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  app.get("/api/admin/users/pending", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getUsersPendingApproval();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching pending users:", error);
+      res.status(500).json({ error: "Failed to fetch pending users" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/approve", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const user = await storage.approveUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error approving user:", error);
+      res.status(500).json({ error: "Failed to approve user" });
+    }
+  });
+
   // Helper function to send work order status emails
   async function sendWorkOrderStatusEmail(workOrder: any) {
     const statusMessages = {
