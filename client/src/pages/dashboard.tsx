@@ -54,7 +54,14 @@ export default function Dashboard() {
   const nextWeek = addDays(today, 7);
   
   const getAllItemsWithDueDates = () => {
-    const items = [];
+    const items: Array<{
+      id: string;
+      title: string;
+      type: string;
+      dueDate: Date;
+      status: string;
+      priority: string;
+    }> = [];
     
     // Add work orders with due dates
     workOrders.forEach(wo => {
@@ -284,57 +291,65 @@ export default function Dashboard() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Work Orders</CardTitle>
-              <Wrench className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{workOrderStats.total - workOrderStats.completed}</div>
-              <p className="text-xs text-muted-foreground">
-                {workOrderStats.readyForPickup} ready for pickup
-              </p>
-            </CardContent>
-          </Card>
+          <Link href="/work-orders">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-work-orders">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Work Orders</CardTitle>
+                <Wrench className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{workOrderStats.total - workOrderStats.completed}</div>
+                <p className="text-xs text-muted-foreground">
+                  {workOrderStats.readyForPickup} ready for pickup
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open Tickets</CardTitle>
-              <TicketIcon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{ticketStats.total}</div>
-              <p className="text-xs text-muted-foreground">
-                {ticketStats.urgent} urgent tickets
-              </p>
-            </CardContent>
-          </Card>
+          <Link href="/tickets">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-tickets">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Open Tickets</CardTitle>
+                <TicketIcon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{ticketStats.total}</div>
+                <p className="text-xs text-muted-foreground">
+                  {ticketStats.urgent} urgent tickets
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Customer Inquiries</CardTitle>
-              <Phone className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{customerInquiries.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Awaiting response
-              </p>
-            </CardContent>
-          </Card>
+          <Link href="/customer-inquiries">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-customer-inquiries">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Customer Inquiries</CardTitle>
+                <Phone className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{customerInquiries.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Awaiting response
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Quote Requests</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{quotationRequests.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {quotationRequests.filter(q => q.urgency === 'urgent').length} urgent
-              </p>
-            </CardContent>
-          </Card>
+          <Link href="/quotation-requests">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-quotation-requests">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Quote Requests</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{quotationRequests.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {quotationRequests.filter(q => q.urgency === 'urgent').length} urgent
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* Due Items Section */}
@@ -352,16 +367,18 @@ export default function Dashboard() {
                   <h4 className="font-medium text-red-800 mb-2">Overdue Items</h4>
                   <div className="space-y-2">
                     {overdueItems.slice(0, 3).map((item) => (
-                      <div key={`${item.type}-${item.id}`} className="flex items-center justify-between p-2 bg-white rounded border border-red-200">
-                        <div>
-                          <span className="font-medium text-sm">{item.title}</span>
-                          <div className="text-xs text-gray-600">Due: {format(item.dueDate, 'MMM dd, yyyy')}</div>
+                      <Link key={`${item.type}-${item.id}`} href={`/${item.type === 'work-order' ? 'work-orders' : item.type === 'ticket' ? 'tickets' : item.type === 'customer-inquiry' ? 'customer-inquiries' : item.type === 'quotation-request' ? 'quotation-requests' : 'tasks'}`}>
+                        <div className="flex items-center justify-between p-2 bg-white rounded border border-red-200 hover:shadow-md transition-shadow cursor-pointer">
+                          <div>
+                            <span className="font-medium text-sm">{item.title}</span>
+                            <div className="text-xs text-gray-600">Due: {format(item.dueDate, 'MMM dd, yyyy')}</div>
+                          </div>
+                          <div className="flex gap-2">
+                            {getPriorityBadge(item.priority)}
+                            <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          {getPriorityBadge(item.priority)}
-                          <Badge variant="destructive" className="text-xs">Overdue</Badge>
-                        </div>
-                      </div>
+                      </Link>
                     ))}
                     {overdueItems.length > 3 && (
                       <p className="text-sm text-red-600">+ {overdueItems.length - 3} more overdue items</p>
@@ -375,16 +392,18 @@ export default function Dashboard() {
                   <h4 className="font-medium text-orange-800 mb-2">Due Today</h4>
                   <div className="space-y-2">
                     {dueTodayItems.slice(0, 3).map((item) => (
-                      <div key={`${item.type}-${item.id}`} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
-                        <div>
-                          <span className="font-medium text-sm">{item.title}</span>
-                          <div className="text-xs text-gray-600">Due: Today</div>
+                      <Link key={`${item.type}-${item.id}`} href={`/${item.type === 'work-order' ? 'work-orders' : item.type === 'ticket' ? 'tickets' : item.type === 'customer-inquiry' ? 'customer-inquiries' : item.type === 'quotation-request' ? 'quotation-requests' : 'tasks'}`}>
+                        <div className="flex items-center justify-between p-2 bg-white rounded border border-orange-200 hover:shadow-md transition-shadow cursor-pointer">
+                          <div>
+                            <span className="font-medium text-sm">{item.title}</span>
+                            <div className="text-xs text-gray-600">Due: Today</div>
+                          </div>
+                          <div className="flex gap-2">
+                            {getPriorityBadge(item.priority)}
+                            <Badge variant="destructive" className="bg-orange-500 text-xs">Due Today</Badge>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          {getPriorityBadge(item.priority)}
-                          <Badge variant="destructive" className="bg-orange-500 text-xs">Due Today</Badge>
-                        </div>
-                      </div>
+                      </Link>
                     ))}
                     {dueTodayItems.length > 3 && (
                       <p className="text-sm text-orange-600">+ {dueTodayItems.length - 3} more due today</p>
@@ -410,18 +429,20 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {workOrders.slice(0, 5).map((workOrder) => (
-                  <div key={workOrder.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{workOrder.customerName}</p>
-                      <p className="text-xs text-gray-600">{workOrder.itemDescription}</p>
+                  <Link key={workOrder.id} href="/work-orders">
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                      <div>
+                        <p className="font-medium text-sm">{workOrder.customerName}</p>
+                        <p className="text-xs text-gray-600">{workOrder.itemDescription}</p>
+                      </div>
+                      <div className="text-right">
+                        {getStatusBadge(workOrder.status || 'received')}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(workOrder.createdAt!).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      {getStatusBadge(workOrder.status || 'received')}
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(workOrder.createdAt!).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
+                  </Link>
                 ))}
                 {workOrders.length === 0 && (
                   <p className="text-center text-gray-500 py-4">No work orders yet</p>
@@ -443,18 +464,20 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {tickets.slice(0, 5).map((ticket) => (
-                  <div key={ticket.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{ticket.title}</p>
-                      <p className="text-xs text-gray-600">{ticket.description}</p>
+                  <Link key={ticket.id} href="/tickets">
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                      <div>
+                        <p className="font-medium text-sm">{ticket.title}</p>
+                        <p className="text-xs text-gray-600">{ticket.description}</p>
+                      </div>
+                      <div className="text-right">
+                        {getPriorityBadge(ticket.priority || 'medium')}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(ticket.createdAt!).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      {getPriorityBadge(ticket.priority || 'medium')}
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(ticket.createdAt!).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
+                  </Link>
                 ))}
                 {tickets.length === 0 && (
                   <p className="text-center text-gray-500 py-4">No tickets yet</p>
@@ -481,6 +504,12 @@ export default function Dashboard() {
                 <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="button-new-ticket">
                   <TicketIcon className="h-6 w-6" />
                   <span className="text-xs">New Ticket</span>
+                </Button>
+              </Link>
+              <Link href="/tasks">
+                <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="button-new-task">
+                  <Clock className="h-6 w-6" />
+                  <span className="text-xs">New Task</span>
                 </Button>
               </Link>
               <Link href="/customer-inquiries">
