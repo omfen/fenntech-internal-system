@@ -48,6 +48,11 @@ export default function Dashboard() {
     queryKey: ['/api/tasks'],
   });
 
+  const { data: changeLog = [] } = useQuery({
+    queryKey: ['/api/change-log'],
+    staleTime: 30000, // Refresh every 30 seconds
+  });
+
   // Calculate due date statistics
   const today = new Date();
   const tomorrow = addDays(today, 1);

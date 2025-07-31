@@ -1073,10 +1073,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/work-orders", authenticateToken, async (req, res) => {
+  app.post("/api/work-orders", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const validatedData = insertWorkOrderSchema.parse(req.body);
-      const workOrder = await storage.createWorkOrder(validatedData);
+      const user = req.user!;
+      const workOrder = await storage.createWorkOrder(
+        validatedData, 
+        user.id, 
+        `${user.firstName} ${user.lastName}`
+      );
       res.status(201).json(workOrder);
     } catch (error) {
       console.error("Error creating work order:", error);
@@ -1088,13 +1093,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/work-orders/:id", authenticateToken, async (req, res) => {
+  app.patch("/api/work-orders/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
       const { sendStatusEmail, ...workOrderUpdates } = updates;
+      const user = req.user!;
       
-      const workOrder = await storage.updateWorkOrder(id, workOrderUpdates);
+      const workOrder = await storage.updateWorkOrder(
+        id, 
+        workOrderUpdates, 
+        user.id, 
+        `${user.firstName} ${user.lastName}`
+      );
       if (!workOrder) {
         return res.status(404).json({ message: "Work order not found" });
       }
@@ -1501,6 +1512,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tips: ["Check your internet connection", "Contact support if the problem persists"],
         relatedFeatures: ["Support", "Documentation"]
       });
+    }
+  });
+
+  // Change Log routes
+  app.get("/api/change-log", authenticateToken, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const changes = await storage.getChangeLog(limit);
+      res.json(changes);
+    } catch (error) {
+      console.error("Error fetching change log:", error);
+      res.status(500).json({ message: "Failed to fetch change log" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Wrench, Plus, Edit, Trash2, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
+import ViewOptions from "@/components/view-options";
 import { apiRequest } from "@/lib/queryClient";
 import { insertWorkOrderSchema, type WorkOrder, type InsertWorkOrder } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function WorkOrdersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingWorkOrder, setEditingWorkOrder] = useState<WorkOrder | null>(null);
+  const [filteredWorkOrders, setFilteredWorkOrders] = useState<WorkOrder[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -52,6 +54,11 @@ export default function WorkOrdersPage() {
   const { data: workOrders = [], isLoading } = useQuery<WorkOrder[]>({
     queryKey: ["/api/work-orders"],
   });
+
+  // Update filtered work orders when data changes
+  React.useEffect(() => {
+    setFilteredWorkOrders(workOrders);
+  }, [workOrders]);
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
@@ -183,6 +190,187 @@ export default function WorkOrdersPage() {
     const user = users.find((u: any) => u.id === userId);
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User";
   };
+
+  // Filter and sort functions
+  const handleFilter = (filter: string) => {
+    if (filter === 'all') {
+      setFilteredWorkOrders(workOrders);
+    } else {
+      const filtered = workOrders.filter(wo => wo.status === filter);
+      setFilteredWorkOrders(filtered);
+    }
+  };
+
+  const handleSort = (sort: string) => {
+    let sorted = [...filteredWorkOrders];
+    switch (sort) {
+      case 'newest':
+        sorted.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+        break;
+      case 'oldest':
+        sorted.sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
+        break;
+      case 'customer':
+        sorted.sort((a, b) => a.customerName.localeCompare(b.customerName));
+        break;
+      case 'status':
+        sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
+        break;
+    }
+    setFilteredWorkOrders(sorted);
+  };
+
+  const handleExport = (format: 'csv' | 'json') => {
+    const exportData = filteredWorkOrders.map(wo => ({
+      id: wo.id,
+      customerName: wo.customerName,
+      telephone: wo.telephone,
+      email: wo.email,
+      itemDescription: wo.itemDescription,
+      issue: wo.issue,
+      status: wo.status,
+      assignedUser: getUserName(wo.assignedUserId),
+      notes: wo.notes,
+      createdAt: wo.createdAt,
+      dueDate: wo.dueDate
+    }));
+
+    if (format === 'csv') {
+      const headers = Object.keys(exportData[0] || {}).join(',');
+      const csvData = exportData.map(row => 
+        Object.values(row).map(value => 
+          `"${String(value || '').replace(/"/g, '""')}"`
+        ).join(',')
+      ).join('\n');
+      
+      const csv = `${headers}\n${csvData}`;
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `work_orders_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } else {
+      const json = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `work_orders_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+  };
+
+  // Status filter options
+  const statusCounts = workOrders.reduce((acc, wo) => {
+    acc[wo.status || 'received'] = (acc[wo.status || 'received'] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const filterOptions = [
+    { label: 'Received', value: 'received', count: statusCounts.received || 0 },
+    { label: 'In Progress', value: 'in_progress', count: statusCounts.in_progress || 0 },
+    { label: 'Testing', value: 'testing', count: statusCounts.testing || 0 },
+    { label: 'Ready for Pickup', value: 'ready_for_pickup', count: statusCounts.ready_for_pickup || 0 },
+    { label: 'Completed', value: 'completed', count: statusCounts.completed || 0 },
+  ];
+
+  const sortOptions = [
+    { label: 'Newest First', value: 'newest' },
+    { label: 'Oldest First', value: 'oldest' },
+    { label: 'Customer Name', value: 'customer' },
+    { label: 'Status', value: 'status' },
+  ];
+
+  // Render functions for ViewOptions
+  const renderCard = (workOrder: WorkOrder) => (
+    <Card key={workOrder.id} className="hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg">{workOrder.customerName}</CardTitle>
+            <p className="text-sm text-gray-600">{workOrder.telephone}</p>
+          </div>
+          {getStatusBadge(workOrder.status || 'received')}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <p className="text-sm"><strong>Item:</strong> {workOrder.itemDescription}</p>
+          <p className="text-sm"><strong>Issue:</strong> {workOrder.issue}</p>
+          <p className="text-sm"><strong>Assigned:</strong> {getUserName(workOrder.assignedUserId)}</p>
+          {workOrder.notes && (
+            <p className="text-sm"><strong>Notes:</strong> {workOrder.notes}</p>
+          )}
+          <div className="flex justify-between items-center pt-2">
+            <p className="text-xs text-gray-500">
+              Created: {new Date(workOrder.createdAt!).toLocaleDateString()}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleEdit(workOrder)}
+                data-testid={`button-edit-${workOrder.id}`}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDelete(workOrder.id)}
+                data-testid={`button-delete-${workOrder.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderListItem = (workOrder: WorkOrder) => (
+    <Card key={workOrder.id} className="p-4 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-4">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-medium truncate">{workOrder.customerName}</h3>
+              <p className="text-sm text-gray-600 truncate">{workOrder.itemDescription}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">{getUserName(workOrder.assignedUserId)}</span>
+              {getStatusBadge(workOrder.status || 'received')}
+              <span className="text-xs text-gray-500">
+                {new Date(workOrder.createdAt!).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 ml-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleEdit(workOrder)}
+            data-testid={`button-edit-${workOrder.id}`}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleDelete(workOrder.id)}
+            data-testid={`button-delete-${workOrder.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -371,142 +559,21 @@ export default function WorkOrdersPage() {
           </Dialog>
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-8">Loading work orders...</div>
-        ) : workOrders.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No work orders found. Create your first work order to get started.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b">
-                    <tr>
-                      <th className="text-left p-4 font-medium text-gray-900">Customer</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Item</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Status</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Assigned To</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Contact</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Created</th>
-                      <th className="text-left p-4 font-medium text-gray-900">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {workOrders.map((workOrder: WorkOrder) => (
-                      <tr key={workOrder.id} className="border-b hover:bg-gray-50" data-testid={`row-work-order-${workOrder.id}`}>
-                        <td className="p-4">
-                          <div>
-                            <p className="font-medium text-gray-900">{workOrder.customerName}</p>
-                            <p className="text-sm text-gray-500">{workOrder.email}</p>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div>
-                            <p className="text-sm font-medium">{workOrder.itemDescription}</p>
-                            <p className="text-xs text-gray-500">{workOrder.issue}</p>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <Select
-                            onValueChange={(value) => {
-                              const statusChanged = workOrder.status !== value;
-                              updateMutation.mutate({
-                                id: workOrder.id,
-                                data: { status: value },
-                                sendEmail: statusChanged
-                              });
-                            }}
-                            defaultValue={workOrder.status || "received"}
-                            data-testid={`select-status-${workOrder.id}`}
-                          >
-                            <SelectTrigger className="w-40">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="received">Received</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="testing">Testing</SelectItem>
-                              <SelectItem value="ready_for_pickup">Ready for Pickup</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-4">
-                          <Select
-                            onValueChange={(value) => {
-                              updateMutation.mutate({
-                                id: workOrder.id,
-                                data: { assignedUserId: value === "null" ? null : value },
-                                sendEmail: false
-                              });
-                            }}
-                            defaultValue={workOrder.assignedUserId || "null"}
-                            data-testid={`select-assigned-${workOrder.id}`}
-                          >
-                            <SelectTrigger className="w-36">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="null">Unassigned</SelectItem>
-                              {users.map((user: any) => (
-                                <SelectItem key={user.id} value={user.id}>
-                                  {user.firstName} {user.lastName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-4">
-                          <div>
-                            <p className="text-sm">{workOrder.telephone}</p>
-                            {workOrder.notes && (
-                              <p className="text-xs text-gray-500 truncate max-w-32" title={workOrder.notes}>
-                                {workOrder.notes}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <p className="text-sm">
-                            {workOrder.createdAt ? new Date(workOrder.createdAt).toLocaleDateString() : 'N/A'}
-                          </p>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                handleEdit(workOrder);
-                                setIsCreateOpen(true);
-                              }}
-                              data-testid={`button-edit-${workOrder.id}`}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(workOrder.id)}
-                              data-testid={`button-delete-${workOrder.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <ViewOptions
+          title="Work Orders"
+          data={filteredWorkOrders}
+          renderCard={renderCard}
+          renderListItem={renderListItem}
+          columns={['id', 'customerName', 'telephone', 'email', 'itemDescription', 'issue', 'status', 'assignedUserId', 'notes', 'createdAt', 'dueDate']}
+          onExport={handleExport}
+          filterOptions={filterOptions}
+          sortOptions={sortOptions}
+          onFilter={handleFilter}
+          onSort={handleSort}
+          showExport={true}
+          showFilter={true}
+          showSort={true}
+        />
       </div>
     </div>
   );

@@ -289,6 +289,24 @@ export const callLogs = pgTable("call_logs", {
 export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = typeof callLogs.$inferInsert;
 
+// Change Log table for system-wide activity tracking
+export const changeLog = pgTable("change_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: varchar("entity_type").notNull(), // "work_order", "task", "ticket", etc.
+  entityId: varchar("entity_id").notNull(),
+  action: varchar("action").notNull(), // "created", "updated", "deleted", "status_changed", "assigned"
+  fieldChanged: varchar("field_changed"), // specific field that was changed
+  oldValue: varchar("old_value"), // previous value
+  newValue: varchar("new_value"), // new value
+  userId: varchar("user_id").references(() => users.id),
+  userName: varchar("user_name").notNull(), // cached for performance
+  description: varchar("description").notNull(), // human-readable description
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ChangeLog = typeof changeLog.$inferSelect;
+export type InsertChangeLog = typeof changeLog.$inferInsert;
+
 // Validation schemas
 export const insertCustomerInquirySchema = createInsertSchema(customerInquiries, {
   dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
@@ -326,6 +344,11 @@ export const insertCallLogSchema = createInsertSchema(callLogs).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertChangeLogSchema = createInsertSchema(changeLog).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const urgencyLevels = ["low", "medium", "high", "urgent"] as const;

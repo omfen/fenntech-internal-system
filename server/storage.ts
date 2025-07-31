@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, type ChangeLog, type InsertChangeLog, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs, changeLog } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 import { hashPassword } from "./auth";
@@ -50,8 +50,8 @@ export interface IStorage {
   // Work Orders
   getWorkOrders(): Promise<WorkOrder[]>;
   getWorkOrderById(id: string): Promise<WorkOrder | undefined>;
-  createWorkOrder(workOrder: InsertWorkOrder): Promise<WorkOrder>;
-  updateWorkOrder(id: string, updates: Partial<WorkOrder>): Promise<WorkOrder | undefined>;
+  createWorkOrder(workOrder: InsertWorkOrder, userId?: string, userName?: string): Promise<WorkOrder>;
+  updateWorkOrder(id: string, updates: Partial<WorkOrder>, userId?: string, userName?: string): Promise<WorkOrder | undefined>;
   deleteWorkOrder(id: string): Promise<boolean>;
 
   // Tickets
@@ -77,6 +77,10 @@ export interface IStorage {
   deleteTask(id: string): Promise<boolean>;
   getTaskLogs(taskId: string): Promise<TaskLog[]>;
   createTaskLog(logData: InsertTaskLog): Promise<TaskLog>;
+
+  // Change Log
+  getChangeLog(limit?: number): Promise<ChangeLog[]>;
+  createChangeLog(log: InsertChangeLog): Promise<ChangeLog>;
 
   // Admin user management
   adminCreateUser(userData: InsertUser & { requiresAdminApproval?: boolean }): Promise<User>;
@@ -359,16 +363,80 @@ export class DatabaseStorage implements IStorage {
     return workOrder || undefined;
   }
 
-  async createWorkOrder(workOrder: InsertWorkOrder): Promise<WorkOrder> {
+  async createWorkOrder(workOrder: InsertWorkOrder, userId?: string, userName?: string): Promise<WorkOrder> {
     const [newWorkOrder] = await db.insert(workOrders).values(workOrder).returning();
+    
+    // Log work order creation
+    if (userId && userName) {
+      await this.logWorkOrderChange(
+        newWorkOrder.id,
+        'created',
+        null,
+        null,
+        null,
+        userId,
+        userName,
+        `Work order created for customer "${newWorkOrder.customerName}"`
+      );
+    }
+    
     return newWorkOrder;
   }
 
-  async updateWorkOrder(id: string, updates: Partial<WorkOrder>): Promise<WorkOrder | undefined> {
+  async updateWorkOrder(id: string, updates: Partial<WorkOrder>, userId?: string, userName?: string): Promise<WorkOrder | undefined> {
+    // Get current work order for comparison
+    const currentWorkOrder = await this.getWorkOrderById(id);
+    if (!currentWorkOrder) return undefined;
+
     const [workOrder] = await db.update(workOrders)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(workOrders.id, id))
       .returning();
+
+    // Log changes if user info is provided
+    if (userId && userName && workOrder) {
+      for (const [field, newValue] of Object.entries(updates)) {
+        if (field === 'updatedAt') continue; // Skip auto-generated fields
+        
+        const oldValue = currentWorkOrder[field as keyof WorkOrder];
+        if (oldValue !== newValue) {
+          let description = "";
+          
+          switch (field) {
+            case 'status':
+              description = `Status changed from "${oldValue}" to "${newValue}"`;
+              break;
+            case 'assignedUserId':
+              const oldUser = oldValue ? await this.getUserById(oldValue as string) : null;
+              const newUser = newValue ? await this.getUserById(newValue as string) : null;
+              const oldUserName = oldUser ? `${oldUser.firstName} ${oldUser.lastName}` : 'Unassigned';
+              const newUserName = newUser ? `${newUser.firstName} ${newUser.lastName}` : 'Unassigned';
+              description = `Assignment changed from "${oldUserName}" to "${newUserName}"`;
+              break;
+            case 'notes':
+              description = `Notes updated`;
+              break;
+            case 'dueDate':
+              description = `Due date changed from "${oldValue}" to "${newValue}"`;
+              break;
+            default:
+              description = `${field} changed from "${oldValue}" to "${newValue}"`;
+          }
+
+          await this.logWorkOrderChange(
+            id,
+            'updated',
+            field,
+            oldValue ? String(oldValue) : null,
+            newValue ? String(newValue) : null,
+            userId,
+            userName,
+            description
+          );
+        }
+      }
+    }
+
     return workOrder || undefined;
   }
 
@@ -520,6 +588,43 @@ export class DatabaseStorage implements IStorage {
   async createTaskLog(logData: InsertTaskLog): Promise<TaskLog> {
     const [log] = await db.insert(taskLogs).values(logData).returning();
     return log;
+  }
+
+  // Change Log methods
+  async getChangeLog(limit: number = 50): Promise<ChangeLog[]> {
+    return await db.select()
+      .from(changeLog)
+      .orderBy(desc(changeLog.createdAt))
+      .limit(limit);
+  }
+
+  async createChangeLog(logData: InsertChangeLog): Promise<ChangeLog> {
+    const [log] = await db.insert(changeLog).values(logData).returning();
+    return log;
+  }
+
+  // Helper method to log changes for work orders
+  async logWorkOrderChange(
+    workOrderId: string,
+    action: string,
+    fieldChanged: string | null,
+    oldValue: string | null,
+    newValue: string | null,
+    userId: string | null,
+    userName: string,
+    description: string
+  ): Promise<void> {
+    await this.createChangeLog({
+      entityType: "work_order",
+      entityId: workOrderId,
+      action,
+      fieldChanged,
+      oldValue,
+      newValue,
+      userId,
+      userName,
+      description,
+    });
   }
 
   // Initialize with predefined categories if none exist
