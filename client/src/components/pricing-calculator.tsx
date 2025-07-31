@@ -39,10 +39,20 @@ export default function PricingCalculator({ exchangeRate }: PricingCalculatorPro
         description: `Extracted ${data.extractedItems.length} potential items`,
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      let errorMessage = "Failed to process PDF file";
+      
+      if (error.message.includes("400")) {
+        if (error.message.includes("No PDF file uploaded")) {
+          errorMessage = "Please select a PDF file to upload";
+        } else if (error.message.includes("File must be a PDF")) {
+          errorMessage = "Please select a valid PDF file";
+        }
+      }
+      
       toast({
         title: "Upload Failed",
-        description: "Failed to process PDF file",
+        description: errorMessage,
         variant: "destructive",
       });
     },
