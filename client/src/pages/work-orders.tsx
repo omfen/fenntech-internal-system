@@ -125,12 +125,18 @@ export default function WorkOrdersPage() {
   });
 
   const onSubmit = (data: FormData) => {
+    // Convert "null" string back to null for assignedUserId
+    const processedData = {
+      ...data,
+      assignedUserId: data.assignedUserId === "null" ? null : data.assignedUserId
+    };
+    
     if (editingWorkOrder) {
       // Check if status changed to determine if we should send email
       const statusChanged = editingWorkOrder.status !== data.status;
-      updateMutation.mutate({ id: editingWorkOrder.id, data, sendEmail: statusChanged });
+      updateMutation.mutate({ id: editingWorkOrder.id, data: processedData, sendEmail: statusChanged });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(processedData);
     }
   };
 
@@ -143,7 +149,7 @@ export default function WorkOrdersPage() {
       itemDescription: workOrder.itemDescription,
       issue: workOrder.issue,
       status: workOrder.status || "received",
-      assignedUserId: workOrder.assignedUserId || "unassigned",
+      assignedUserId: workOrder.assignedUserId || "null",
       notes: workOrder.notes || "",
     });
   };
@@ -317,14 +323,14 @@ export default function WorkOrdersPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Assigned User</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value || ""} data-testid="select-assigned-user">
+                        <Select onValueChange={field.onChange} defaultValue={field.value || "null"} data-testid="select-assigned-user">
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select user" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            <SelectItem value="null">Unassigned</SelectItem>
                             {users.map((user: any) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.firstName} {user.lastName}
