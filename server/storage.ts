@@ -825,8 +825,8 @@ export class DatabaseStorage implements IStorage {
 
   async generateQuoteNumber(): Promise<string> {
     const count = await db.select().from(quotations);
-    const nextNumber = count.length + 1;
-    return `Q${new Date().getFullYear()}-${nextNumber.toString().padStart(4, '0')}`;
+    const nextNumber = count.length + 1000; // Start at Q2025-1000
+    return `Q${new Date().getFullYear()}-${nextNumber.toString()}`;
   }
 
   // Invoice methods

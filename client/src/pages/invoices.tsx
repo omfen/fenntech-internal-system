@@ -259,7 +259,8 @@ export default function Invoices() {
 
   const handleDownloadPDF = (invoice: Invoice) => {
     try {
-      downloadInvoicePDF(invoice, companySettings);
+      const clientData = clients.find(c => c.id === invoice.clientId);
+      downloadInvoicePDF(invoice, companySettings, clientData?.name);
       toast({
         title: 'Success',
         description: 'PDF downloaded successfully',

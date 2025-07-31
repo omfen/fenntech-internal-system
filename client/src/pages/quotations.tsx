@@ -227,7 +227,8 @@ export default function Quotations() {
 
   const handleDownloadPDF = (quotation: Quotation) => {
     try {
-      downloadQuotationPDF(quotation, companySettings);
+      const clientData = clients.find(c => c.id === quotation.clientId);
+      downloadQuotationPDF(quotation, companySettings, clientData?.name);
       toast({
         title: 'Success',
         description: 'PDF downloaded successfully',
