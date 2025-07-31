@@ -183,10 +183,15 @@ export default function CallLogsPage() {
   });
 
   const onSubmit = (data: FormData) => {
+    const processedData = {
+      ...data,
+      followUpDate: data.followUpDate ? new Date(data.followUpDate) : undefined,
+    };
+    
     if (editingCallLog) {
-      updateMutation.mutate({ id: editingCallLog.id, data });
+      updateMutation.mutate({ id: editingCallLog.id, data: processedData });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(processedData);
     }
   };
 
@@ -202,7 +207,7 @@ export default function CallLogsPage() {
       outcome: callLog.outcome || "answered",
       status: callLog.status || "pending",
       assignedUserId: callLog.assignedUserId || undefined,
-      followUpDate: callLog.followUpDate ? (callLog.followUpDate.includes('T') ? callLog.followUpDate.slice(0, 16) : callLog.followUpDate.slice(0, 10)) : "",
+      followUpDate: callLog.followUpDate ? (typeof callLog.followUpDate === 'string' ? callLog.followUpDate : callLog.followUpDate.toISOString().slice(0, 16)) : "",
     });
     setIsCreateOpen(true);
   };

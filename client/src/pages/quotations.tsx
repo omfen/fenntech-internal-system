@@ -180,10 +180,16 @@ export default function Quotations() {
   };
 
   const handleSubmit = (data: QuotationForm) => {
+    const processedData = {
+      ...data,
+      quoteDate: data.quoteDate ? new Date(data.quoteDate) : new Date(),
+      expirationDate: data.expirationDate ? new Date(data.expirationDate) : addDays(new Date(), 30),
+    };
+    
     if (editingQuotation) {
-      updateMutation.mutate({ id: editingQuotation.id, data });
+      updateMutation.mutate({ id: editingQuotation.id, data: processedData });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(processedData);
     }
   };
 
@@ -192,8 +198,8 @@ export default function Quotations() {
     const items = Array.isArray(quotation.items) ? quotation.items : [];
     form.reset({
       clientId: quotation.clientId,
-      quoteDate: format(new Date(quotation.quoteDate), 'yyyy-MM-dd'),
-      expirationDate: format(new Date(quotation.expirationDate), 'yyyy-MM-dd'),
+      quoteDate: typeof quotation.quoteDate === 'string' ? quotation.quoteDate.slice(0, 10) : format(new Date(quotation.quoteDate), 'yyyy-MM-dd'),
+      expirationDate: typeof quotation.expirationDate === 'string' ? quotation.expirationDate.slice(0, 10) : format(new Date(quotation.expirationDate), 'yyyy-MM-dd'),
       items: items.length > 0 ? items : [{ id: '1', description: '', quantity: 1, unitPrice: 0, total: 0 }],
       subtotal: quotation.subtotal,
       gctAmount: quotation.gctAmount || '0.00',
