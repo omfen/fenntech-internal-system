@@ -5,6 +5,7 @@ import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema,
 import { z } from "zod";
 import multer from "multer";
 import nodemailer from "nodemailer";
+import { AmazonProductAPI } from "./amazon-api";
 // pdf-parse will be dynamically imported when needed
 
 // Configure multer for file uploads
@@ -513,11 +514,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let costUsd = 0;
       let extractedSuccessfully = false;
 
-      // Try to extract ASIN from various Amazon URL formats
-      const asinMatch = amazonUrl.match(/\/([B][0-9A-Z]{9})|\/dp\/([B][0-9A-Z]{9})|\/gp\/product\/([B][0-9A-Z]{9})/);
-      if (asinMatch) {
-        asin = asinMatch[1] || asinMatch[2] || asinMatch[3];
-      }
+      // Extract ASIN using the Amazon API service
+      asin = AmazonProductAPI.extractASIN(amazonUrl) || "";
 
       // Enhanced Amazon product database with real products and prices
       const amazonProducts: Record<string, {name: string, price: number}> = {
@@ -575,24 +573,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       };
 
-      // Check if we have this product in our database
-      if (asin && amazonProducts[asin]) {
-        const product = amazonProducts[asin];
-        productName = product.name;
-        costUsd = product.price;
-        extractedSuccessfully = true;
-      }
-      // Enhanced URL parsing for product title extraction
-      else if (asin) {
-        productName = await extractProductNameFromUrl(amazonUrl, asin);
-        costUsd = 0;
-        extractedSuccessfully = false;
+      if (asin) {
+        // Try Amazon Product Advertising API first (if credentials are available)
+        const amazonAPI = new AmazonProductAPI({
+          accessKey: process.env.AMAZON_ACCESS_KEY || '',
+          secretKey: process.env.AMAZON_SECRET_KEY || '',
+          associateTag: process.env.AMAZON_ASSOCIATE_TAG || '',
+          region: 'us-east-1'
+        });
+
+        // Only attempt API call if we have valid credentials
+        if (process.env.AMAZON_ACCESS_KEY && process.env.AMAZON_SECRET_KEY && process.env.AMAZON_ASSOCIATE_TAG) {
+          console.log('Attempting to fetch product from Amazon API for ASIN:', asin);
+          const apiResult = await amazonAPI.getProductInfo(asin);
+          
+          if (apiResult && apiResult.price > 0) {
+            productName = apiResult.title;
+            costUsd = apiResult.price;
+            extractedSuccessfully = true;
+            console.log('Successfully fetched from Amazon API:', { productName, costUsd });
+          }
+        }
+
+        // Fallback to local database if API didn't work
+        if (!extractedSuccessfully) {
+          console.log('Falling back to local product database for ASIN:', asin);
+          
+          if (amazonProducts[asin]) {
+            const product = amazonProducts[asin];
+            productName = product.name;
+            costUsd = product.price;
+            extractedSuccessfully = true;
+            console.log('Found in local database:', { productName, costUsd });
+          } else {
+            // Enhanced URL parsing for product title extraction
+            productName = await extractProductNameFromUrl(amazonUrl, asin);
+            console.log('Using URL-based extraction:', productName);
+          }
+        }
       } else {
         // If no ASIN found, try to extract product name from URL structure
         const urlTitle = extractTitleFromAmazonUrl(amazonUrl);
         productName = urlTitle || "Amazon Product - Please verify details and cost";
-        costUsd = 0;
-        extractedSuccessfully = false;
+        console.log('No ASIN found, using URL title:', productName);
       }
 
       const response = {

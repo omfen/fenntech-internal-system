@@ -9,7 +9,7 @@ This is a complete full-stack web application for inventory pricing and manageme
 
 Both systems generate email reports to management and maintain comprehensive pricing history. The application features a modern React frontend with Node.js/Express backend using PostgreSQL for persistent storage.
 
-**Status: Fully functional and operational** - All PDF and Amazon pricing features implemented and tested with 162 JMD exchange rate.
+**Status: Fully functional and operational** - All PDF and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy.
 
 ## User Preferences
 
