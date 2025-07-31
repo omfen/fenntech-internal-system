@@ -62,6 +62,9 @@ export function AmazonPricing() {
   // URL extraction form
   const urlForm = useForm<AmazonUrlForm>({
     resolver: zodResolver(amazonUrlSchema),
+    defaultValues: {
+      amazonUrl: '',
+    },
   });
 
   // Extract price mutation
@@ -190,7 +193,7 @@ export function AmazonPricing() {
     resolver: zodResolver(emailSchema),
     defaultValues: {
       to: 'omar.fennell@gmail.com',
-      subject: `Amazon Pricing Report - ${selectedSession?.productName || 'Product'}`,
+      subject: 'Amazon Pricing Report',
       notes: '',
     },
   });
