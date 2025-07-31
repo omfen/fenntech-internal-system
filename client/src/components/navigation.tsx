@@ -32,7 +32,7 @@ export default function Navigation() {
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
       {/* Logo at top center */}
-      <div className="flex justify-center py-4 border-b">
+      <div className="flex justify-center py-2 border-b">
         <Link href="/">
           <img src={FennTechLogo} alt="FennTech" className="h-12 w-auto" />
         </Link>
