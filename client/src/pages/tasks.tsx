@@ -177,10 +177,27 @@ export default function Tasks() {
   };
 
   const handleStatusChange = (taskId: string, newStatus: string) => {
+    console.log('Changing task status:', { taskId, newStatus });
     updateTaskMutation.mutate({ 
       id: taskId, 
       data: { 
         status: newStatus
+      }
+    }, {
+      onSuccess: (data) => {
+        console.log('Task status updated successfully:', data);
+        toast({
+          title: "Status Updated",
+          description: `Task status changed to ${newStatus}`,
+        });
+      },
+      onError: (error) => {
+        console.error('Failed to update task status:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update task status",
+          variant: "destructive",
+        });
       }
     });
   };
@@ -510,7 +527,10 @@ export default function Tasks() {
 
                 <div className="mt-4 space-y-2">
                   <div className="flex space-x-2">
-                    <Select onValueChange={(value) => handleStatusChange(task.id, value)}>
+                    <Select 
+                      value={task.status} 
+                      onValueChange={(value) => handleStatusChange(task.id, value)}
+                    >
                       <SelectTrigger className="w-full" data-testid={`select-status-${task.id}`}>
                         <SelectValue placeholder="Change Status" />
                       </SelectTrigger>
@@ -524,7 +544,10 @@ export default function Tasks() {
                   </div>
                   
                   <div className="flex space-x-2">
-                    <Select onValueChange={(value) => handleAssignment(task.id, value)}>
+                    <Select 
+                      value={task.assignedUserId || "unassigned"} 
+                      onValueChange={(value) => handleAssignment(task.id, value)}
+                    >
                       <SelectTrigger className="w-full" data-testid={`select-assign-${task.id}`}>
                         <SelectValue placeholder="Assign To" />
                       </SelectTrigger>
