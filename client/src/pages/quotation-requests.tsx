@@ -31,8 +31,10 @@ import { FileText, Phone, Mail, Plus, Edit, Trash2, Calendar, AlertCircle } from
 import { format } from "date-fns";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
+import ViewOptions from "@/components/view-options";
 import type { QuotationRequest, InsertQuotationRequest } from "@shared/schema";
 import { urgencyLevels } from "@shared/schema";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const urgencyColors = {
   low: "bg-green-100 text-green-800",
@@ -70,6 +72,58 @@ export default function QuotationRequestsPage() {
     quoteDescription: "",
     urgency: "medium",
   });
+
+  // View options state
+  const [view, setView] = useState<'cards' | 'list'>('cards');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Sort options
+  const sortOptions = [
+    { value: 'customerName', label: 'Customer Name' },
+    { value: 'urgency', label: 'Urgency' },
+    { value: 'status', label: 'Status' },
+    { value: 'createdAt', label: 'Date Created' },
+  ];
+
+  // Export function
+  const handleExport = (format: 'csv' | 'json') => {
+    const dataToExport = filteredRequests.map(request => ({
+      customer: request.customerName,
+      phone: request.telephoneNumber,
+      email: request.emailAddress,
+      description: request.quoteDescription,
+      urgency: request.urgency,
+      status: request.status || '',
+      created: request.createdAt ? format(new Date(request.createdAt), "yyyy-MM-dd") : '',
+    }));
+
+    if (format === 'json') {
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `quotation_requests_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = Object.keys(dataToExport[0] || {});
+      const csvContent = [
+        headers.join(','),
+        ...dataToExport.map(row => headers.map(header => `"${row[header as keyof typeof row] || ''}"`).join(','))
+      ].join('\n');
+      
+      const dataBlob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `quotation_requests_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
 
   const { data: requests = [], isLoading } = useQuery<QuotationRequest[]>({
     queryKey: ["/api/quotation-requests"],
@@ -237,6 +291,46 @@ export default function QuotationRequestsPage() {
     updateStatusMutation.mutate({ id, status });
   };
 
+  // Filter and sort requests
+  const filteredRequests = requests
+    .filter(request =>
+      request.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.telephoneNumber.includes(searchTerm) ||
+      request.emailAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.quoteDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (request.status || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.urgency.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortBy) {
+        case 'customerName':
+          valueA = a.customerName.toLowerCase();
+          valueB = b.customerName.toLowerCase();
+          break;
+        case 'urgency':
+          valueA = a.urgency;
+          valueB = b.urgency;
+          break;
+        case 'status':
+          valueA = a.status || '';
+          valueB = b.status || '';
+          break;
+        case 'createdAt':
+        default:
+          valueA = new Date(a.createdAt || '');
+          valueB = new Date(b.createdAt || '');
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+      } else {
+        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+      }
+    });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -376,8 +470,25 @@ export default function QuotationRequestsPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-6">
-          {requests.map((request) => (
+        {/* View Options */}
+        <ViewOptions
+          view={view}
+          onViewChange={setView}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search quotation requests..."
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          sortOptions={sortOptions}
+          onExport={handleExport}
+          exportFilename="quotation_requests"
+        />
+
+        {view === 'cards' ? (
+          <div className="grid gap-6">
+            {filteredRequests.map((request) => (
             <Card key={request.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between space-y-4 sm:space-y-0">
@@ -484,7 +595,120 @@ export default function QuotationRequestsPage() {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+        ) : (
+          <div className="mt-6">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Urgency</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRequests.map((request) => (
+                      <TableRow key={request.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{request.customerName}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-1">
+                              <Phone className="h-3 w-3 text-gray-500" />
+                              <span className="text-sm">{request.telephoneNumber}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Mail className="h-3 w-3 text-gray-500" />
+                              <span className="text-sm">{request.emailAddress}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-md">
+                          <p className="truncate" title={request.quoteDescription}>
+                            {request.quoteDescription}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={urgencyColors[request.urgency as keyof typeof urgencyColors]}>
+                            {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[request.status as keyof typeof statusColors]}>
+                            {statusOptions.find(s => s.value === request.status)?.label || request.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {request.createdAt ? format(new Date(request.createdAt), "MMM dd, yyyy") : "Unknown"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Select onValueChange={(value) => handleStatusChange(request.id, value)}>
+                              <SelectTrigger className="w-32">
+                                <SelectValue placeholder="Change Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {statusOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(request)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Quotation Request</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this quotation request from {request.customerName}?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(request.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete Request
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {filteredRequests.length === 0 && requests.length > 0 && (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Results Found</h3>
+              <p className="text-gray-600">
+                No requests match your search criteria. Try adjusting your search terms.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {requests.length === 0 && (
           <Card>

@@ -14,7 +14,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Ticket, Plus, Edit, Trash2, AlertCircle, CheckCircle, Clock, XCircle } from "lucide-react";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
+import ViewOptions from "@/components/view-options";
 import { apiRequest } from "@/lib/queryClient";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { insertTicketSchema, type Ticket as TicketType, type InsertTicket } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +37,57 @@ export default function TicketsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  // View options state
+  const [view, setView] = useState<'cards' | 'list'>('cards');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Sort options
+  const sortOptions = [
+    { value: 'title', label: 'Title' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'status', label: 'Status' },
+    { value: 'createdAt', label: 'Date Created' },
+  ];
+
+  // Export function
+  const handleExport = (format: 'csv' | 'json') => {
+    const dataToExport = filteredTickets.map(ticket => ({
+      title: ticket.title,
+      description: ticket.description,
+      priority: ticket.priority,
+      status: ticket.status,
+      assignedTo: users.find(u => u.id === ticket.assignedToId)?.email || '',
+      created: ticket.createdAt ? format(new Date(ticket.createdAt), "yyyy-MM-dd") : '',
+    }));
+
+    if (format === 'json') {
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `tickets_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = Object.keys(dataToExport[0] || {});
+      const csvContent = [
+        headers.join(','),
+        ...dataToExport.map(row => headers.map(header => `"${row[header as keyof typeof row] || ''}"`).join(','))
+      ].join('\n');
+      
+      const dataBlob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `tickets_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -178,6 +231,45 @@ export default function TicketsPage() {
     const user = users.find((u: any) => u.id === userId);
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User";
   };
+
+  // Filter and sort tickets
+  const filteredTickets = tickets
+    .filter((ticket: any) =>
+      ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.priority.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getUserName(ticket.assignedUserId).toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a: any, b: any) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortBy) {
+        case 'title':
+          valueA = a.title.toLowerCase();
+          valueB = b.title.toLowerCase();
+          break;
+        case 'priority':
+          valueA = a.priority;
+          valueB = b.priority;
+          break;
+        case 'status':
+          valueA = a.status;
+          valueB = b.status;
+          break;
+        case 'createdAt':
+        default:
+          valueA = new Date(a.createdAt || '');
+          valueB = new Date(b.createdAt || '');
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+      } else {
+        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+      }
+    });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -333,8 +425,31 @@ export default function TicketsPage() {
           </Dialog>
         </div>
 
+        {/* View Options */}
+        <ViewOptions
+          view={view}
+          onViewChange={setView}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search tickets..."
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          sortOptions={sortOptions}
+          onExport={handleExport}
+          exportFilename="tickets"
+        />
+
         {isLoading ? (
           <div className="text-center py-8">Loading tickets...</div>
+        ) : filteredTickets.length === 0 && tickets.length > 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No tickets match your search criteria.</p>
+            </CardContent>
+          </Card>
         ) : tickets.length === 0 ? (
           <Card>
             <CardContent className="text-center py-8">
@@ -342,9 +457,9 @@ export default function TicketsPage() {
               <p className="text-gray-500">No tickets found. Create your first ticket to get started.</p>
             </CardContent>
           </Card>
-        ) : (
+        ) : view === 'cards' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tickets.map((ticket: TicketType) => (
+            {filteredTickets.map((ticket: TicketType) => (
               <Card key={ticket.id} className="hover:shadow-md transition-shadow" data-testid={`card-ticket-${ticket.id}`}>
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start gap-2">
@@ -400,6 +515,77 @@ export default function TicketsPage() {
               </Card>
             ))}
           </div>
+        ) : (
+          <div className="mt-6">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead>Created By</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTickets.map((ticket: TicketType) => (
+                      <TableRow key={ticket.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{ticket.title}</TableCell>
+                        <TableCell className="max-w-md">
+                          <p className="truncate" title={ticket.description}>
+                            {ticket.description}
+                          </p>
+                        </TableCell>
+                        <TableCell>{getPriorityBadge(ticket.priority || "medium")}</TableCell>
+                        <TableCell>{getStatusBadge(ticket.status || "open")}</TableCell>
+                        <TableCell>{getUserName(ticket.assignedUserId)}</TableCell>
+                        <TableCell>{getUserName(ticket.createdById)}</TableCell>
+                        <TableCell>
+                          {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                handleEdit(ticket);
+                                setIsCreateOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(ticket.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {filteredTickets.length === 0 && tickets.length > 0 && (
+          <Card>
+            <CardContent className="text-center py-8">
+              <Ticket className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No tickets match your search criteria.</p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

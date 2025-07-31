@@ -14,7 +14,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Phone, Plus, Edit, Trash2, PhoneCall, PhoneOutgoing, Clock } from "lucide-react";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
+import ViewOptions from "@/components/view-options";
 import { apiRequest } from "@/lib/queryClient";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { insertCallLogSchema, type CallLog, type InsertCallLog, callTypeLevels, callPurposeLevels, callOutcomeLevels } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -36,6 +38,59 @@ export default function CallLogsPage() {
   const [editingCallLog, setEditingCallLog] = useState<CallLog | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // View options state
+  const [view, setView] = useState<'cards' | 'list'>('cards');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Sort options
+  const sortOptions = [
+    { value: 'customerName', label: 'Customer Name' },
+    { value: 'callType', label: 'Call Type' },
+    { value: 'callPurpose', label: 'Purpose' },
+    { value: 'createdAt', label: 'Date Created' },
+  ];
+
+  // Export function
+  const handleExport = (format: 'csv' | 'json') => {
+    const dataToExport = filteredCallLogs.map(log => ({
+      customer: log.customerName,
+      phone: log.phoneNumber,
+      type: log.callType,
+      purpose: log.callPurpose,
+      duration: log.duration || '',
+      outcome: log.outcome || '',
+      notes: log.notes || '',
+      created: log.createdAt ? format(new Date(log.createdAt), "yyyy-MM-dd") : '',
+    }));
+
+    if (format === 'json') {
+      const dataStr = JSON.stringify(dataToExport, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `call_logs_${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = Object.keys(dataToExport[0] || {});
+      const csvContent = [
+        headers.join(','),
+        ...dataToExport.map(row => headers.map(header => `"${row[header as keyof typeof row] || ''}"`).join(','))
+      ].join('\n');
+      
+      const dataBlob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `call_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -186,6 +241,46 @@ export default function CallLogsPage() {
     const user = users.find(u => u.id === userId);
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User";
   };
+
+  // Filter and sort call logs
+  const filteredCallLogs = callLogs
+    .filter((log: any) =>
+      log.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.phoneNumber.includes(searchTerm) ||
+      log.callType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.callPurpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.notes || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.outcome || '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a: any, b: any) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortBy) {
+        case 'customerName':
+          valueA = a.customerName.toLowerCase();
+          valueB = b.customerName.toLowerCase();
+          break;
+        case 'callType':
+          valueA = a.callType;
+          valueB = b.callType;
+          break;
+        case 'callPurpose':
+          valueA = a.callPurpose;
+          valueB = b.callPurpose;
+          break;
+        case 'createdAt':
+        default:
+          valueA = new Date(a.createdAt || '');
+          valueB = new Date(b.createdAt || '');
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+      } else {
+        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+      }
+    });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -420,13 +515,29 @@ export default function CallLogsPage() {
           </Dialog>
         </div>
 
+        {/* View Options */}
+        <ViewOptions
+          view={view}
+          onViewChange={setView}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search call logs..."
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          sortOptions={sortOptions}
+          onExport={handleExport}
+          exportFilename="call_logs"
+        />
+
         {/* Call Logs List */}
         {isLoading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading call logs...</p>
           </div>
-        ) : (
+        ) : view === 'cards' ? (
           <div className="grid gap-4">
             {callLogs.map((callLog: CallLog) => (
               <Card key={callLog.id} className="hover:shadow-md transition-shadow">
@@ -501,20 +612,91 @@ export default function CallLogsPage() {
                 </CardContent>
               </Card>
             ))}
-            {callLogs.length === 0 && (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <Phone className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No call logs yet</h3>
-                  <p className="text-gray-600 mb-4">Start tracking your customer calls.</p>
-                  <Button onClick={() => setIsCreateOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log First Call
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
+        ) : (
+          <div className="mt-6">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Purpose</TableHead>
+                      <TableHead>Outcome</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Assigned To</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCallLogs.map((callLog: any) => (
+                      <TableRow key={callLog.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{callLog.customerName}</TableCell>
+                        <TableCell>{callLog.phoneNumber}</TableCell>
+                        <TableCell>{getCallTypeBadge(callLog.callType)}</TableCell>
+                        <TableCell>{callLog.callPurpose.replace('_', ' ')}</TableCell>
+                        <TableCell>{getOutcomeBadge(callLog.outcome || "answered")}</TableCell>
+                        <TableCell>
+                          {callLog.duration && (
+                            <div className="flex items-center">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {callLog.duration}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>{getUserName(callLog.assignedUserId)}</TableCell>
+                        <TableCell>
+                          {callLog.createdAt ? new Date(callLog.createdAt).toLocaleDateString() : "Unknown"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(callLog)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(callLog.id)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {filteredCallLogs.length === 0 && callLogs.length > 0 && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Phone className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Results Found</h3>
+              <p className="text-gray-600">No call logs match your search criteria.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {callLogs.length === 0 && (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Phone className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No call logs yet</h3>
+              <p className="text-gray-600 mb-4">Start tracking your customer calls.</p>
+              <Button onClick={() => setIsCreateOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Log First Call
+              </Button>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
