@@ -1272,7 +1272,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tickets", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const validatedData = insertTicketSchema.parse(req.body);
+      // Handle "unassigned" value by converting to null
+      const requestBody = { ...req.body };
+      if (requestBody.assignedUserId === "unassigned") {
+        requestBody.assignedUserId = null;
+      }
+      
+      const validatedData = insertTicketSchema.parse(requestBody);
       const ticket = await storage.createTicket(validatedData);
       
       // Log creation
@@ -1387,7 +1393,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/call-logs", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const callLogData = req.body;
+      // Handle "unassigned" value by converting to null
+      const callLogData = { ...req.body };
+      if (callLogData.assignedUserId === "unassigned") {
+        callLogData.assignedUserId = null;
+      }
       const callLog = await storage.createCallLog(callLogData);
       
       // Log creation

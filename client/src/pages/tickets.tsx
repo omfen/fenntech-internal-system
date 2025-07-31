@@ -53,40 +53,16 @@ export default function TicketsPage() {
   ];
 
   // Export function
-  const handleExport = (format: 'csv' | 'json') => {
-    const dataToExport = filteredTickets.map(ticket => ({
+  const handleExport = () => {
+    return (filteredTickets as TicketType[]).map((ticket: TicketType) => ({
       title: ticket.title,
       description: ticket.description,
       priority: ticket.priority,
       status: ticket.status,
-      assignedTo: users.find(u => u.id === ticket.assignedToId)?.email || '',
-      created: ticket.createdAt ? format(new Date(ticket.createdAt), "yyyy-MM-dd") : '',
+      assignedTo: getUserName(ticket.assignedUserId),
+      createdBy: getUserName(ticket.createdById),
+      createdAt: ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A',
     }));
-
-    if (format === 'json') {
-      const dataStr = JSON.stringify(dataToExport, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tickets_${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-    } else {
-      const headers = Object.keys(dataToExport[0] || {});
-      const csvContent = [
-        headers.join(','),
-        ...dataToExport.map(row => headers.map(header => `"${row[header as keyof typeof row] || ''}"`).join(','))
-      ].join('\n');
-      
-      const dataBlob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `tickets_${new Date().toISOString().split('T')[0]}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-    }
   };
 
   const form = useForm<FormData>({
@@ -99,7 +75,7 @@ export default function TicketsPage() {
     },
   });
 
-  const { data: tickets = [], isLoading } = useQuery({
+  const { data: tickets = [], isLoading } = useQuery<TicketType[]>({
     queryKey: ["/api/tickets"],
   });
 
@@ -233,15 +209,15 @@ export default function TicketsPage() {
   };
 
   // Filter and sort tickets
-  const filteredTickets = tickets
-    .filter((ticket: any) =>
+  const filteredTickets = (tickets as TicketType[])
+    .filter((ticket: TicketType) =>
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.priority.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getUserName(ticket.assignedUserId).toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a: any, b: any) => {
+    .sort((a: TicketType, b: TicketType) => {
       let valueA: any, valueB: any;
       
       switch (sortBy) {
@@ -378,7 +354,7 @@ export default function TicketsPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Assigned User</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-assigned-user">
+                        <Select onValueChange={field.onChange} defaultValue={field.value || ""} data-testid="select-assigned-user">
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select user" />
