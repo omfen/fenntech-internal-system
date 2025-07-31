@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, type EmailReport } from "@shared/schema";
+import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, type EmailReport } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import nodemailer from "nodemailer";
@@ -450,6 +450,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: "Invalid email data", errors: error.errors });
       } else {
         res.status(500).json({ message: "Failed to send email" });
+      }
+    }
+  });
+
+  // Get current exchange rate (updated to 162)
+  app.get("/api/exchange-rate", (req, res) => {
+    res.json({ usdToJmd: 162.00 });
+  });
+
+  // Amazon pricing session routes
+  app.get("/api/amazon-pricing-sessions", async (req, res) => {
+    try {
+      const sessions = await storage.getAmazonPricingSessions();
+      res.json(sessions);
+    } catch (error) {
+      console.error('Error fetching Amazon pricing sessions:', error);
+      res.status(500).json({ message: "Failed to fetch Amazon pricing sessions" });
+    }
+  });
+
+  app.get("/api/amazon-pricing-sessions/:id", async (req, res) => {
+    try {
+      const session = await storage.getAmazonPricingSessionById(req.params.id);
+      if (!session) {
+        return res.status(404).json({ message: "Amazon pricing session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      console.error('Error fetching Amazon pricing session:', error);
+      res.status(500).json({ message: "Failed to fetch Amazon pricing session" });
+    }
+  });
+
+  app.post("/api/amazon-pricing-sessions", async (req, res) => {
+    try {
+      const validatedSession = insertAmazonPricingSessionSchema.parse(req.body);
+      const session = await storage.createAmazonPricingSession(validatedSession);
+      res.status(201).json(session);
+    } catch (error) {
+      console.error('Error creating Amazon pricing session:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid Amazon pricing session data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create Amazon pricing session" });
+      }
+    }
+  });
+
+  // Amazon URL validation and price extraction (simulated)
+  app.post("/api/extract-amazon-price", async (req, res) => {
+    try {
+      const { amazonUrl } = req.body;
+      
+      if (!amazonUrl || !amazonUrl.includes('amazon.com')) {
+        return res.status(400).json({ message: "Please provide a valid Amazon URL" });
+      }
+
+      // For now, simulate price extraction with example data
+      // In production, this would use web scraping or Amazon API
+      const simulatedProduct = {
+        productName: "Sample Amazon Product - High Quality Item with Premium Features",
+        costUsd: 75.99,
+        extractedSuccessfully: false, // Set to false to show manual input option
+        amazonUrl: amazonUrl,
+      };
+
+      res.json(simulatedProduct);
+    } catch (error) {
+      console.error('Amazon price extraction error:', error);
+      res.status(500).json({ message: "Failed to extract price from Amazon URL" });
+    }
+  });
+
+  // Amazon email report
+  app.post("/api/send-amazon-email-report", async (req, res) => {
+    try {
+      const emailReportSchema = z.object({
+        to: z.string().email(),
+        subject: z.string(),
+        notes: z.string().optional(),
+        sessionId: z.string(),
+      });
+
+      const emailData = emailReportSchema.parse(req.body);
+      const session = await storage.getAmazonPricingSessionById(emailData.sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ message: "Amazon pricing session not found" });
+      }
+
+      const exchangeRate = parseFloat(session.exchangeRate);
+      const costUsd = parseFloat(session.costUsd);
+      const amazonPrice = parseFloat(session.amazonPrice);
+      const sellingPriceUsd = parseFloat(session.sellingPriceUsd);
+      const sellingPriceJmd = parseFloat(session.sellingPriceJmd);
+      const markupPercentage = parseFloat(session.markupPercentage);
+
+      const htmlContent = `
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #FF9900;">FennTech Amazon Pricing Report</h2>
+              
+              <p>Dear Management,</p>
+              
+              <p>Please find below the Amazon pricing report for the requested item.</p>
+              
+              <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ffc107;">
+                <h4 style="margin-top: 0; color: #856404;">⚠️ Important Notice</h4>
+                <p style="margin-bottom: 0;"><strong>Please consider weight and local taxes</strong> when finalizing the pricing. These factors may affect the total cost and should be added to the calculated selling price.</p>
+              </div>
+              
+              <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #FF9900;">Product Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Product:</strong></td>
+                    <td style="padding: 5px 0;">${session.productName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Amazon URL:</strong></td>
+                    <td style="padding: 5px 0;"><a href="${session.amazonUrl}" target="_blank">View Product</a></td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Item Cost:</strong></td>
+                    <td style="padding: 5px 0;">$${costUsd.toFixed(2)} USD</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Amazon Price (Cost + 7%):</strong></td>
+                    <td style="padding: 5px 0;">$${amazonPrice.toFixed(2)} USD</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Markup Applied:</strong></td>
+                    <td style="padding: 5px 0;">${markupPercentage.toFixed(0)}%</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Selling Price (USD):</strong></td>
+                    <td style="padding: 5px 0;">$${sellingPriceUsd.toFixed(2)} USD</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Exchange Rate:</strong></td>
+                    <td style="padding: 5px 0;">$${exchangeRate.toFixed(2)} JMD per USD</td>
+                  </tr>
+                  <tr style="background: #e8f4f8;">
+                    <td style="padding: 8px 5px;"><strong>Final Selling Price (JMD):</strong></td>
+                    <td style="padding: 8px 5px;"><strong>$${sellingPriceJmd.toLocaleString()} JMD</strong></td>
+                  </tr>
+                </table>
+              </div>
+              
+              ${emailData.notes ? `
+                <div style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+                  <h4 style="margin-top: 0; color: #1976D2;">Additional Notes:</h4>
+                  <p style="margin-bottom: 0;">${emailData.notes}</p>
+                </div>
+              ` : ''}
+              
+              <p style="margin-top: 30px;">Best regards,<br>FennTech Pricing System</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntech.com',
+        to: emailData.to,
+        subject: emailData.subject,
+        html: htmlContent,
+      });
+
+      // Update session to mark email as sent
+      await storage.updateAmazonPricingSessionEmailSent(emailData.sessionId);
+
+      res.json({ message: "Amazon pricing email sent successfully" });
+    } catch (error) {
+      console.error('Amazon email sending error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid email data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to send Amazon pricing email" });
       }
     }
   });

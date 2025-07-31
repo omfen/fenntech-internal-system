@@ -22,12 +22,35 @@ export const pricingSessions = pgTable("pricing_sessions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Amazon pricing sessions table
+export const amazonPricingSessions = pgTable("amazon_pricing_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  amazonUrl: text("amazon_url").notNull(),
+  productName: text("product_name").notNull(),
+  costUsd: decimal("cost_usd", { precision: 10, scale: 2 }).notNull(),
+  amazonPrice: decimal("amazon_price", { precision: 10, scale: 2 }).notNull(), // Cost + 7%
+  markupPercentage: decimal("markup_percentage", { precision: 5, scale: 2 }).notNull(),
+  sellingPriceUsd: decimal("selling_price_usd", { precision: 10, scale: 2 }).notNull(),
+  sellingPriceJmd: decimal("selling_price_jmd", { precision: 15, scale: 2 }).notNull(),
+  exchangeRate: decimal("exchange_rate", { precision: 10, scale: 4 }).notNull(),
+  notes: text("notes"), // For weight and local taxes consideration
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  emailSent: timestamp("email_sent"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
   createdAt: true,
 });
 
 export const insertPricingSessionSchema = createInsertSchema(pricingSessions).omit({
+  id: true,
+  createdAt: true,
+  emailSent: true,
+});
+
+export const insertAmazonPricingSessionSchema = createInsertSchema(amazonPricingSessions).omit({
   id: true,
   createdAt: true,
   emailSent: true,
@@ -42,6 +65,8 @@ export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type UpdateCategory = z.infer<typeof updateCategorySchema>;
 export type PricingSession = typeof pricingSessions.$inferSelect;
 export type InsertPricingSession = z.infer<typeof insertPricingSessionSchema>;
+export type AmazonPricingSession = typeof amazonPricingSessions.$inferSelect;
+export type InsertAmazonPricingSession = z.infer<typeof insertAmazonPricingSessionSchema>;
 
 export interface PricingItem {
   id: string;

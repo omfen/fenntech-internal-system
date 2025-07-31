@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type PricingSession, type InsertPricingSession, categories, pricingSessions } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, categories, pricingSessions, amazonPricingSessions } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -15,6 +15,12 @@ export interface IStorage {
   getPricingSessionById(id: string): Promise<PricingSession | undefined>;
   createPricingSession(session: InsertPricingSession): Promise<PricingSession>;
   updatePricingSessionEmailSent(id: string): Promise<void>;
+
+  // Amazon Pricing Sessions
+  getAmazonPricingSessions(): Promise<AmazonPricingSession[]>;
+  getAmazonPricingSessionById(id: string): Promise<AmazonPricingSession | undefined>;
+  createAmazonPricingSession(session: InsertAmazonPricingSession): Promise<AmazonPricingSession>;
+  updateAmazonPricingSessionEmailSent(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -76,6 +82,32 @@ export class DatabaseStorage implements IStorage {
       .update(pricingSessions)
       .set({ emailSent: new Date() })
       .where(eq(pricingSessions.id, id));
+  }
+
+  // Amazon Pricing Sessions
+  async getAmazonPricingSessions(): Promise<AmazonPricingSession[]> {
+    const result = await db.select().from(amazonPricingSessions).orderBy(amazonPricingSessions.createdAt);
+    return result;
+  }
+
+  async getAmazonPricingSessionById(id: string): Promise<AmazonPricingSession | undefined> {
+    const [session] = await db.select().from(amazonPricingSessions).where(eq(amazonPricingSessions.id, id));
+    return session || undefined;
+  }
+
+  async createAmazonPricingSession(insertSession: InsertAmazonPricingSession): Promise<AmazonPricingSession> {
+    const [session] = await db
+      .insert(amazonPricingSessions)
+      .values(insertSession)
+      .returning();
+    return session;
+  }
+
+  async updateAmazonPricingSessionEmailSent(id: string): Promise<void> {
+    await db
+      .update(amazonPricingSessions)
+      .set({ emailSent: new Date() })
+      .where(eq(amazonPricingSessions.id, id));
   }
 
   // Initialize with predefined categories if none exist
