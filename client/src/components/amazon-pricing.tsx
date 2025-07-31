@@ -77,6 +77,16 @@ export function AmazonPricing() {
     onSuccess: (data: any) => {
       setExtractedProduct(data);
       setShowPricingForm(true);
+      
+      // Populate the form with extracted data
+      pricingForm.setValue('amazonUrl', data.amazonUrl || '');
+      pricingForm.setValue('productName', data.productName || '');
+      pricingForm.setValue('costUsd', data.costUsd || 0);
+      
+      // Set appropriate markup based on cost
+      const newMarkup = (data.costUsd || 0) > 100 ? 120 : 80;
+      pricingForm.setValue('markupPercentage', newMarkup);
+      
       toast({
         title: "URL processed successfully",
         description: data.extractedSuccessfully ? 
@@ -97,10 +107,10 @@ export function AmazonPricing() {
   const pricingForm = useForm<AmazonPricingForm>({
     resolver: zodResolver(amazonPricingSchema),
     defaultValues: {
-      amazonUrl: extractedProduct?.amazonUrl || '',
-      productName: extractedProduct?.productName || '',
-      costUsd: extractedProduct?.costUsd || 0,
-      markupPercentage: extractedProduct?.costUsd > 100 ? 120 : 80, // Auto markup based on cost
+      amazonUrl: '',
+      productName: '',
+      costUsd: 0,
+      markupPercentage: 80,
       notes: '',
     },
   });
@@ -153,7 +163,13 @@ export function AmazonPricing() {
       setShowPricingForm(false);
       setExtractedProduct(null);
       urlForm.reset();
-      pricingForm.reset();
+      pricingForm.reset({
+        amazonUrl: '',
+        productName: '',
+        costUsd: 0,
+        markupPercentage: 80,
+        notes: '',
+      });
     },
     onError: () => {
       toast({
@@ -303,6 +319,7 @@ export function AmazonPricing() {
                             type="number" 
                             step="0.01" 
                             {...field}
+                            value={field.value || 0}
                             onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
                             data-testid="input-cost-usd"
                           />
@@ -330,7 +347,8 @@ export function AmazonPricing() {
                             type="number" 
                             step="1" 
                             {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            value={field.value || 80}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 80)}
                             data-testid="input-markup-percentage"
                           />
                         </FormControl>
@@ -415,6 +433,7 @@ export function AmazonPricing() {
                       setShowPricingForm(false);
                       setExtractedProduct(null);
                       urlForm.reset();
+                      pricingForm.reset();
                     }}
                     data-testid="button-cancel"
                   >
