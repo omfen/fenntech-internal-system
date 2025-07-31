@@ -88,6 +88,7 @@ export default function WorkOrdersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/work-orders"] });
       setEditingWorkOrder(null);
+      setIsCreateOpen(false);
       form.reset();
       toast({
         title: "Success",
@@ -380,82 +381,131 @@ export default function WorkOrdersPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {workOrders.map((workOrder: WorkOrder) => (
-              <Card key={workOrder.id} className="hover:shadow-md transition-shadow" data-testid={`card-work-order-${workOrder.id}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-lg truncate">{workOrder.customerName}</CardTitle>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          handleEdit(workOrder);
-                          setIsCreateOpen(true);
-                        }}
-                        data-testid={`button-edit-${workOrder.id}`}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(workOrder.id)}
-                        data-testid={`button-delete-${workOrder.id}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    {getStatusBadge(workOrder.status || "pending")}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Contact</p>
-                    <p className="text-sm">{workOrder.telephone}</p>
-                    <p className="text-sm text-blue-600">{workOrder.email}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Item</p>
-                    <p className="text-sm">{workOrder.itemDescription}</p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Issue</p>
-                    <p className="text-sm">{workOrder.issue}</p>
-                  </div>
-
-                  {workOrder.notes && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Notes</p>
-                      <p className="text-sm">{workOrder.notes}</p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Assigned To</p>
-                    <p className="text-sm">{getUserName(workOrder.assignedUserId)}</p>
-                  </div>
-
-                  {workOrder.lastEmailSent && (
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Last Email Sent</p>
-                      <p className="text-sm">{new Date(workOrder.lastEmailSent).toLocaleDateString()}</p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Created</p>
-                    <p className="text-sm">{workOrder.createdAt ? new Date(workOrder.createdAt).toLocaleDateString() : 'N/A'}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left p-4 font-medium text-gray-900">Customer</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Item</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Status</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Assigned To</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Contact</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Created</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workOrders.map((workOrder: WorkOrder) => (
+                      <tr key={workOrder.id} className="border-b hover:bg-gray-50" data-testid={`row-work-order-${workOrder.id}`}>
+                        <td className="p-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{workOrder.customerName}</p>
+                            <p className="text-sm text-gray-500">{workOrder.email}</p>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div>
+                            <p className="text-sm font-medium">{workOrder.itemDescription}</p>
+                            <p className="text-xs text-gray-500">{workOrder.issue}</p>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <Select
+                            onValueChange={(value) => {
+                              const statusChanged = workOrder.status !== value;
+                              updateMutation.mutate({
+                                id: workOrder.id,
+                                data: { status: value },
+                                sendEmail: statusChanged
+                              });
+                            }}
+                            defaultValue={workOrder.status || "received"}
+                            data-testid={`select-status-${workOrder.id}`}
+                          >
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="received">Received</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="testing">Testing</SelectItem>
+                              <SelectItem value="ready_for_pickup">Ready for Pickup</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-4">
+                          <Select
+                            onValueChange={(value) => {
+                              updateMutation.mutate({
+                                id: workOrder.id,
+                                data: { assignedUserId: value === "null" ? null : value },
+                                sendEmail: false
+                              });
+                            }}
+                            defaultValue={workOrder.assignedUserId || "null"}
+                            data-testid={`select-assigned-${workOrder.id}`}
+                          >
+                            <SelectTrigger className="w-36">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="null">Unassigned</SelectItem>
+                              {users.map((user: any) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.firstName} {user.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-4">
+                          <div>
+                            <p className="text-sm">{workOrder.telephone}</p>
+                            {workOrder.notes && (
+                              <p className="text-xs text-gray-500 truncate max-w-32" title={workOrder.notes}>
+                                {workOrder.notes}
+                              </p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <p className="text-sm">
+                            {workOrder.createdAt ? new Date(workOrder.createdAt).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                handleEdit(workOrder);
+                                setIsCreateOpen(true);
+                              }}
+                              data-testid={`button-edit-${workOrder.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(workOrder.id)}
+                              data-testid={`button-delete-${workOrder.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
