@@ -77,8 +77,8 @@ export default function PricingHistory() {
   const calculateItemPricing = (item: ItemEditForm, category: Category | undefined) => {
     if (!category) return { finalPriceJmd: 0, finalPriceUsd: 0 };
     
-    const costUsd = item.costPrice;
-    const markupMultiplier = 1 + (category.markupPercentage / 100);
+    const costUsd = Number(item.costPrice) || 0;
+    const markupMultiplier = 1 + (Number(category.markupPercentage) / 100);
     const finalPriceUsd = costUsd * markupMultiplier;
     const finalPriceJmd = finalPriceUsd * exchangeRate;
     
@@ -207,18 +207,20 @@ export default function PricingHistory() {
   const handleEdit = (session: PricingSession) => {
     setSelectedSession(session);
     const items = session.items as any[] || [];
-    const editableItems = items.map(item => ({
-      id: item.id || Math.random().toString(),
-      description: item.description || '',
+    const editableItems = items.map((item, index) => ({
+      id: item.id || `item-${index}`,
+      description: item.description || item.partNumber || '',
       categoryId: item.categoryId || '',
-      costPrice: parseFloat(item.costPrice) || 0,
-      quantity: item.quantity || 1,
+      costPrice: parseFloat(item.costPrice || item.unitPrice || 0),
+      quantity: parseInt(item.quantity || 1),
     }));
     
+    // Reset form and set all values
+    editForm.reset();
     editForm.setValue('items', editableItems);
-    editForm.setValue('exchangeRate', parseFloat(session.exchangeRate));
-    editForm.setValue('roundingOption', session.roundingOption as any);
-    editForm.setValue('notes', session.notes || '');
+    editForm.setValue('exchangeRate', parseFloat(session.exchangeRate || '162'));
+    editForm.setValue('roundingOption', (session.roundingOption || 'none') as any);
+    editForm.setValue('notes', '');
     setShowEditDialog(true);
   };
 
@@ -556,13 +558,7 @@ export default function PricingHistory() {
                 </div>
               </div>
 
-              {/* Notes */}
-              {selectedSession.notes && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-600">Notes</Label>
-                  <p className="text-sm mt-1 p-3 bg-gray-50 rounded-lg">{selectedSession.notes}</p>
-                </div>
-              )}
+              {/* Notes section removed - not in schema */}
             </div>
           )}
         </DialogContent>
@@ -656,7 +652,7 @@ export default function PricingHistory() {
                             type="number"
                             step="0.01"
                             {...field}
-                            value={field.value || 162}
+                            value={isNaN(field.value) ? 162 : field.value}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 162)}
                             data-testid="input-edit-exchange-rate"
                           />
@@ -750,7 +746,7 @@ export default function PricingHistory() {
                                       type="number"
                                       step="0.01"
                                       {...field}
-                                      value={field.value || 0}
+                                      value={isNaN(field.value) ? '' : field.value}
                                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                       data-testid={`input-item-cost-${index}`}
                                     />
@@ -770,7 +766,7 @@ export default function PricingHistory() {
                                       type="number"
                                       min="1"
                                       {...field}
-                                      value={field.value || 1}
+                                      value={isNaN(field.value) ? 1 : field.value}
                                       onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                                       data-testid={`input-item-quantity-${index}`}
                                     />
