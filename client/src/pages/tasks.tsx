@@ -83,7 +83,8 @@ export default function Tasks() {
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: InsertTask) => {
-      return apiRequest("/api/tasks", "POST", data);
+      const response = await apiRequest("POST", "/api/tasks", data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -105,7 +106,8 @@ export default function Tasks() {
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) => {
-      return apiRequest(`/api/tasks/${id}`, "PATCH", data);
+      const response = await apiRequest("PATCH", `/api/tasks/${id}`, data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
@@ -125,7 +127,8 @@ export default function Tasks() {
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/tasks/${id}`, "DELETE");
+      const response = await apiRequest("DELETE", `/api/tasks/${id}`);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
