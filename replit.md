@@ -15,8 +15,8 @@ Preferred communication style: Simple, everyday language.
 The application follows a monorepo structure with clear separation between client, server, and shared code:
 
 - **Frontend**: React with TypeScript, Vite build system, shadcn/ui component library
-- **Backend**: Node.js with Express, TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
+- **Backend**: Node.js with Express, TypeScript  
+- **Database**: PostgreSQL with Drizzle ORM (migrated from in-memory storage)
 - **Styling**: TailwindCSS with CSS variables for theming
 - **State Management**: TanStack Query for server state, React hooks for local state
 
@@ -34,7 +34,7 @@ The application follows a monorepo structure with clear separation between clien
 - **Database Layer**: Drizzle ORM with PostgreSQL dialect
 - **File Processing**: Multer for file uploads, pdf-parse for PDF text extraction
 - **Email Integration**: Nodemailer for sending pricing reports
-- **Storage Strategy**: Implements both memory storage (development) and database storage interfaces
+- **Storage Strategy**: PostgreSQL database with automatic schema migration and category initialization
 
 ### Database Schema
 - **Categories Table**: Stores product categories with markup percentages
