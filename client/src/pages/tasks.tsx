@@ -169,8 +169,8 @@ export default function Tasks() {
     updateTaskMutation.mutate({ 
       id: taskId, 
       data: { 
-        assignedUserId: userId,
-        assignedUserName: assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : ""
+        assignedUserId: userId === "unassigned" ? null : userId,
+        assignedUserName: userId === "unassigned" ? null : (assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : "")
       }
     });
   };
@@ -317,14 +317,14 @@ export default function Tasks() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Assign To</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || "unassigned"}>
                           <FormControl>
                             <SelectTrigger data-testid="select-assigned-user">
                               <SelectValue placeholder="Select user" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
                             {users.map((u) => (
                               <SelectItem key={u.id} value={u.id}>
                                 {u.firstName} {u.lastName}
@@ -508,7 +508,7 @@ export default function Tasks() {
                         <SelectValue placeholder="Assign To" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Unassigned</SelectItem>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
                         {users.map((u) => (
                           <SelectItem key={u.id} value={u.id}>
                             {u.firstName} {u.lastName}
