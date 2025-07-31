@@ -7,7 +7,7 @@ import PricingHistory from "@/components/pricing-history";
 import CategoryManagement from "@/components/category-management";
 import EmailReports from "@/components/email-reports";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Upload } from "lucide-react";
+import { ShoppingCart, Upload, TrendingUp } from "lucide-react";
 
 type ActiveSection = "pricing" | "history" | "categories" | "reports";
 
@@ -48,6 +48,13 @@ export default function Home() {
                 <Button variant="outline" className="border-orange-300 text-orange-600 hover:bg-orange-50 text-sm w-full sm:w-auto">
                   <ShoppingCart className="h-4 w-4 mr-2" />
                   Amazon Pricing
+                </Button>
+              </Link>
+              <Link to="/dashboard">
+                <Button variant="outline" className="border-green-300 text-green-600 hover:bg-green-50 text-sm w-full sm:w-auto">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Price Dashboard</span>
+                  <span className="sm:hidden">Dashboard</span>
                 </Button>
               </Link>
             </div>

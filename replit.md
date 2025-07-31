@@ -71,7 +71,8 @@ The application follows a monorepo structure with clear separation between clien
 15. **Dual Navigation**: Easy switching between Intcomex Pricing and Amazon Pricing systems
 16. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
 17. **Professional UI**: Modern interface with system-specific branding and responsive design
-18. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
+18. **Mobile-Friendly Price Trend Dashboard**: Comprehensive dashboard showing pricing trends, statistics, and recent sessions for both Intcomex and Amazon pricing with mobile-optimized card layouts
+19. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
 
 ## Data Flow
 

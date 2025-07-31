@@ -1,10 +1,10 @@
 import { Link } from 'wouter';
-import { AmazonPricing } from '@/components/amazon-pricing';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Upload, ShoppingCart, TrendingUp } from 'lucide-react';
 import Header from '@/components/header';
+import PriceTrendDashboard from '@/components/price-trend-dashboard';
 
-export default function AmazonPricingPage() {
+export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -21,22 +21,21 @@ export default function AmazonPricingPage() {
                   <span className="sm:hidden">Intcomex</span>
                 </Button>
               </Link>
-              <Link to="/dashboard">
-                <Button variant="outline" className="border-green-300 text-green-600 hover:bg-green-50 text-sm w-full sm:w-auto">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Price Dashboard</span>
-                  <span className="sm:hidden">Dashboard</span>
+              <Link to="/amazon-pricing">
+                <Button variant="outline" className="border-orange-300 text-orange-600 hover:bg-orange-50 text-sm w-full sm:w-auto">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Amazon Pricing
                 </Button>
               </Link>
-              <Button variant="default" className="bg-orange-600 hover:bg-orange-700 text-white text-sm">
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Amazon Pricing
+              <Button variant="default" className="bg-green-600 hover:bg-green-700 text-white text-sm">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Price Dashboard
               </Button>
             </div>
             <Link to="/" className="sm:block">
               <Button variant="ghost" className="text-gray-600 hover:text-gray-800 text-sm w-full sm:w-auto">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Back to Intcomex Pricing</span>
+                <span className="hidden sm:inline">Back to Home</span>
                 <span className="sm:hidden">Back</span>
               </Button>
             </Link>
@@ -44,8 +43,9 @@ export default function AmazonPricingPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <AmazonPricing />
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <PriceTrendDashboard />
       </div>
     </div>
   );
