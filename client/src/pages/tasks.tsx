@@ -145,7 +145,7 @@ export default function Tasks() {
 
   const onSubmit = (data: TaskFormData) => {
     // Transform form data to API format
-    const apiData: InsertTask = {
+    const apiData: any = {
       ...data,
       assignedUserId: data.assignedUserId === "unassigned" ? undefined : data.assignedUserId,
       dueDate: data.dueDate || undefined,
