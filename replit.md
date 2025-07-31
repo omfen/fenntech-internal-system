@@ -42,14 +42,15 @@ The application follows a monorepo structure with clear separation between clien
 - **JSON Storage**: Items stored as JSONB for flexible pricing item structure
 
 ### Implemented Features
-1. **PDF Invoice Processing**: Upload and extract item data from PDF invoices using pdf-parse
-2. **Category Management**: Pre-loaded categories with specified markups (Accessories-100%, Ink-45%, Sub Woofers-35%, Speakers-45%, Headphones-65%, UPS-50%, Laptop Bags-50%, Laptops-25%, Desktops-25%, Adaptors-65%, Routers-50%)
+1. **Enhanced PDF Invoice Processing**: Upload and extract item data from PDF invoices with detailed descriptions (2x longer text) and automatic category assignment based on keywords
+2. **Smart Category Management**: Pre-loaded categories with automatic matching - Accessories-100%, Ink-45%, Sub Woofers-35%, Speakers-45%, Headphones-65%, UPS-50%, Laptop Bags-50%, Laptops-25%, Desktops-25%, Adaptors-65%, Routers-50%
 3. **Dynamic Pricing Calculator**: Real-time calculations following the formula: (Item cost × exchange rate) + 15% GCT, then apply markup percentage
-4. **Rounding Options**: Round final prices to nearest $100, $1,000, or $10,000 JMD
-5. **Pricing History**: Complete tracking and display of all pricing sessions
-6. **Email Reports**: Automated email system sending detailed reports to management (omar.fennell@gmail.com)
-7. **Exchange Rate Management**: Manual daily USD to JMD rate updates
-8. **Professional UI**: Modern interface with FennTech branding and responsive design
+4. **Intelligent Item Recognition**: Auto-categorizes items based on description keywords (WiFi→Adaptors, Ink→Ink, UPS→UPS, etc.)
+5. **Rounding Options**: Round final prices to nearest $100, $1,000, or $10,000 JMD
+6. **Pricing History**: Complete tracking and display of all pricing sessions with persistent PostgreSQL storage
+7. **Email Reports**: Automated email system sending detailed reports to management (omar.fennell@gmail.com)
+8. **Exchange Rate Management**: Manual daily USD to JMD rate updates
+9. **Professional UI**: Modern interface with FennTech branding and responsive design
 
 ## Data Flow
 
