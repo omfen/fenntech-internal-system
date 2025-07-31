@@ -23,13 +23,21 @@ export function RegisterForm() {
       password: "",
       firstName: "",
       lastName: "",
+      role: "user",
+      isActive: true,
+      requiresAdminApproval: false,
     },
   });
 
   const onSubmit = async (data: InsertUser) => {
     try {
-      // Set default role as 'user' for all new registrations
-      const userData = { ...data, role: "user" as const };
+      // Ensure role is set for new registrations
+      const userData = { 
+        ...data, 
+        role: "user" as const,
+        isActive: true,
+        requiresAdminApproval: false 
+      };
       await register(userData);
       toast({
         title: "Registration successful",
@@ -54,7 +62,7 @@ export function RegisterForm() {
           Create Account
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Register with your FennTech email address
+          Register with your @fenntechltd.com or @876get.com email address
         </p>
       </CardHeader>
       <CardContent>
@@ -120,7 +128,7 @@ export function RegisterForm() {
                       <Input
                         {...field}
                         type="email"
-                        placeholder="your.email@fenntechltd.com"
+                        placeholder="name@fenntechltd.com"
                         className="pl-10"
                         data-testid="input-email"
                       />
@@ -143,7 +151,7 @@ export function RegisterForm() {
                       <Input
                         {...field}
                         type={showPassword ? "text" : "password"}
-                        placeholder="At least 8 characters"
+                        placeholder="Minimum 8 characters required"
                         className="pl-10 pr-10"
                         data-testid="input-password"
                       />
