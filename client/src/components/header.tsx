@@ -20,9 +20,7 @@ export default function Header() {
               <Calculator className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate" data-testid="app-title">
-                FennTech Pricing
-              </h1>
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate" data-testid="app-title">FennTech Internal App</h1>
               <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Inventory Pricing & Management</p>
             </div>
           </div>

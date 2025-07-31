@@ -1366,6 +1366,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }
 
+  // Help system API
+  app.post("/api/help", authenticateToken, async (req, res) => {
+    try {
+      const helpRequest = req.body;
+      const helpResponse = await HelpService.generateHelp(helpRequest);
+      res.json(helpResponse);
+    } catch (error) {
+      console.error("Error generating help:", error);
+      res.status(500).json({ 
+        explanation: "Unable to generate help content at this time. Please try again later or contact support.",
+        tips: ["Check your internet connection", "Contact support if the problem persists"],
+        relatedFeatures: ["Support", "Documentation"]
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
