@@ -108,6 +108,9 @@ export const updateCategorySchema = insertCategorySchema.extend({
 export type Category = typeof categories.$inferSelect;
 export type User = typeof users.$inferSelect;
 
+// Export task schemas
+export * from "./task-schema";
+
 // Customer Product Inquiries table
 export const customerInquiries = pgTable("customer_inquiries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

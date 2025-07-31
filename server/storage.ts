@@ -335,6 +335,82 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(tickets).orderBy(tickets.createdAt);
   }
 
+  // Tasks
+  async getTasks(): Promise<Task[]> {
+    return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+  }
+
+  async getTaskById(id: string): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task;
+  }
+
+  async createTask(taskData: InsertTask & { createdById: string; createdByName: string }): Promise<Task> {
+    const [task] = await db.insert(tasks).values(taskData).returning();
+    
+    // Log task creation
+    await this.createTaskLog({
+      taskId: task.id,
+      action: "created",
+      description: `Task "${task.title}" was created`,
+      userId: taskData.createdById,
+      userName: taskData.createdByName,
+    });
+
+    return task;
+  }
+
+  async updateTask(id: string, updates: UpdateTask & { updatedById?: string; updatedByName?: string }): Promise<Task | null> {
+    const currentTask = await this.getTaskById(id);
+    if (!currentTask) return null;
+
+    const [updatedTask] = await db
+      .update(tasks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+
+    // Log task update
+    if (updates.updatedById && updates.updatedByName) {
+      await this.createTaskLog({
+        taskId: id,
+        action: "updated",
+        description: `Task "${updatedTask.title}" was updated`,
+        userId: updates.updatedById,
+        userName: updates.updatedByName,
+      });
+
+      // Set completion time if marked as completed
+      if (updates.status === "completed" && currentTask.status !== "completed") {
+        await db
+          .update(tasks)
+          .set({ completedAt: new Date() })
+          .where(eq(tasks.id, id));
+      }
+    }
+
+    return updatedTask;
+  }
+
+  async deleteTask(id: string): Promise<boolean> {
+    const result = await db.delete(tasks).where(eq(tasks.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Task Logs
+  async getTaskLogs(taskId: string): Promise<TaskLog[]> {
+    return await db
+      .select()
+      .from(taskLogs)
+      .where(eq(taskLogs.taskId, taskId))
+      .orderBy(desc(taskLogs.createdAt));
+  }
+
+  async createTaskLog(logData: InsertTaskLog): Promise<TaskLog> {
+    const [log] = await db.insert(taskLogs).values(logData).returning();
+    return log;
+  }
+
   async getTicketById(id: string): Promise<Ticket | undefined> {
     const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
     return ticket || undefined;

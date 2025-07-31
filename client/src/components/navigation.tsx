@@ -1,4 +1,4 @@
-import { Calculator, BarChart3, DollarSign, Users, Phone, FileText, Wrench, Ticket, ChevronDown, PhoneCall } from "lucide-react";
+import { Calculator, BarChart3, DollarSign, Users, Phone, FileText, Wrench, Ticket, ChevronDown, PhoneCall, HelpCircle, CheckSquare } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
