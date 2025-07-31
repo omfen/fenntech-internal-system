@@ -399,19 +399,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
               <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
                 <thead>
                   <tr style="background: #f9f9f9;">
-                    <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Description</th>
-                    <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Cost (USD)</th>
-                    <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Category</th>
-                    <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Final Price (JMD)</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left; font-size: 12px;">Description</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Cost Price (USD)</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Markup %</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Final Price (JMD)</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${items.map(item => `
                     <tr>
-                      <td style="padding: 8px; border: 1px solid #ddd;">${item.description}</td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">$${item.costUsd.toFixed(2)}</td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">${item.categoryName} (${item.markupPercentage}%)</td>
-                      <td style="padding: 8px; border: 1px solid #ddd;">$${item.finalPrice.toLocaleString()}</td>
+                      <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${item.description}</td>
+                      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 11px;">$${item.costUsd.toFixed(2)}</td>
+                      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 11px;">${item.markupPercentage}%</td>
+                      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 11px; font-weight: bold;">$${item.finalPrice.toLocaleString()}</td>
                     </tr>
                   `).join('')}
                 </tbody>

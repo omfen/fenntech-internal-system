@@ -17,8 +17,8 @@ export default function AmazonPricingPage() {
               <Link to="/">
                 <Button variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-50 text-sm w-full sm:w-auto">
                   <Upload className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">PDF Invoice Pricing</span>
-                  <span className="sm:hidden">PDF Pricing</span>
+                  <span className="hidden sm:inline">Intcomex Pricing</span>
+                  <span className="sm:hidden">Intcomex</span>
                 </Button>
               </Link>
               <Button variant="default" className="bg-orange-600 hover:bg-orange-700 text-white text-sm">
@@ -29,7 +29,7 @@ export default function AmazonPricingPage() {
             <Link to="/" className="sm:block">
               <Button variant="ghost" className="text-gray-600 hover:text-gray-800 text-sm w-full sm:w-auto">
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Back to PDF Pricing</span>
+                <span className="hidden sm:inline">Back to Intcomex Pricing</span>
                 <span className="sm:hidden">Back</span>
               </Button>
             </Link>

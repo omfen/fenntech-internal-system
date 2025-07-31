@@ -41,8 +41,8 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
               <Button variant="default" className="bg-blue-600 hover:bg-blue-700 text-white text-sm">
                 <Upload className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">PDF Invoice Pricing</span>
-                <span className="sm:hidden">PDF Pricing</span>
+                <span className="hidden sm:inline">Intcomex Pricing</span>
+                <span className="sm:hidden">Intcomex</span>
               </Button>
               <Link to="/amazon-pricing">
                 <Button variant="outline" className="border-orange-300 text-orange-600 hover:bg-orange-50 text-sm w-full sm:w-auto">

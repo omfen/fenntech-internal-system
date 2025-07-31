@@ -16,7 +16,7 @@ interface PricingCalculatorProps {
 
 export default function PricingCalculator({ exchangeRate }: PricingCalculatorProps) {
   const [items, setItems] = useState<PricingItem[]>([]);
-  const [roundingOption, setRoundingOption] = useState<number>(1000);
+  const [roundingOption, setRoundingOption] = useState<number>(100);
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -206,7 +206,7 @@ export default function PricingCalculator({ exchangeRate }: PricingCalculatorPro
     <Card data-testid="pricing-calculator">
       <CardHeader className="border-b border-gray-200 p-4 sm:p-6">
         <CardTitle className="text-lg sm:text-xl font-semibold text-gray-900">
-          Pricing Calculator
+          Intcomex Pricing Calculator
         </CardTitle>
         <p className="text-xs sm:text-sm text-gray-600">Upload invoice and calculate selling prices</p>
       </CardHeader>

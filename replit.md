@@ -4,12 +4,12 @@
 
 This is a complete full-stack web application for inventory pricing and management built for FennTech. The system handles both PDF invoice processing and Amazon product pricing with two distinct calculation methods:
 
-1. **PDF Invoice Pricing**: Processes invoices, extracts items, applies category markups, adds 15% GCT, and converts to JMD
+1. **Intcomex Invoice Pricing**: Processes invoices, extracts items, applies category markups, adds 15% GCT, and converts to JMD (defaults to nearest $100 rounding)
 2. **Amazon Pricing**: Validates Amazon URLs, extracts prices, applies Cost+7% formula, then markup based on item value (80% under $100, 120% over $100)
 
 Both systems generate email reports to management and maintain comprehensive pricing history. The application features a modern React frontend with Node.js/Express backend using PostgreSQL for persistent storage.
 
-**Status: Fully functional and operational** - All PDF and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy.
+**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components.
 
 ## User Preferences
 
@@ -49,13 +49,13 @@ The application follows a monorepo structure with clear separation between clien
 
 ### Implemented Features
 
-#### PDF Invoice System
-1. **Enhanced PDF Invoice Processing**: Upload and extract item data from PDF invoices with detailed descriptions (2x longer text) and automatic category assignment based on keywords
+#### Intcomex Invoice System
+1. **Enhanced Intcomex Invoice Processing**: Upload and extract item data from PDF invoices with detailed descriptions (2x longer text) and automatic category assignment based on keywords
 2. **Smart Category Management**: Pre-loaded categories with automatic matching - Accessories-100%, Ink-45%, Sub Woofers-35%, Speakers-45%, Headphones-65%, UPS-50%, Laptop Bags-50%, Laptops-25%, Desktops-25%, Adaptors-65%, Routers-50%
 3. **Dynamic Pricing Calculator**: Real-time calculations following the formula: (Item cost × exchange rate) + 15% GCT, then apply markup percentage
 4. **Intelligent Item Recognition**: Auto-categorizes items based on description keywords (WiFi→Adaptors, Ink→Ink, UPS→UPS, etc.)
-5. **Rounding Options**: Round final prices to nearest $100, $1,000, or $10,000 JMD
-6. **PDF Pricing History**: Complete tracking and display of all PDF pricing sessions
+5. **Rounding Options**: Round final prices to nearest $100 (default), $1,000, or $10,000 JMD
+6. **Intcomex Pricing History**: Complete tracking and display of all pricing sessions with mobile-friendly card layouts
 
 #### Amazon Pricing System
 7. **Amazon URL Validation**: Validates Amazon.com URLs and extracts product information
@@ -67,10 +67,11 @@ The application follows a monorepo structure with clear separation between clien
 
 #### Shared Features
 13. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)
-14. **Email Reports**: Automated email system sending detailed reports to management (omar.fennell@gmail.com) for both PDF and Amazon pricing
-15. **Dual Navigation**: Easy switching between PDF Invoice and Amazon Pricing systems
-16. **Professional UI**: Modern interface with system-specific branding and responsive design
-17. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
+14. **Enhanced Email Reports**: Automated email system sending detailed reports to management (omar.fennell@gmail.com) including item details, cost price, markup percentage, and final price for both Intcomex and Amazon pricing
+15. **Dual Navigation**: Easy switching between Intcomex Pricing and Amazon Pricing systems
+16. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
+17. **Professional UI**: Modern interface with system-specific branding and responsive design
+18. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
 
 ## Data Flow
 
