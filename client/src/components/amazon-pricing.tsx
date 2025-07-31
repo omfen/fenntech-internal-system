@@ -42,6 +42,7 @@ type EmailForm = z.infer<typeof emailSchema>;
 export function AmazonPricing() {
   const [extractedProduct, setExtractedProduct] = useState<any>(null);
   const [showPricingForm, setShowPricingForm] = useState(false);
+  const [entryMode, setEntryMode] = useState<'url' | 'manual'>('url');
   const [selectedSession, setSelectedSession] = useState<AmazonPricingSession | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const { toast } = useToast();
@@ -244,46 +245,93 @@ export function AmazonPricing() {
         </AlertDescription>
       </Alert>
 
-      {/* URL Input Section */}
+      {/* Entry Mode Selection and Input */}
       {!showPricingForm && (
         <Card>
           <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-lg sm:text-xl">Enter Amazon URL</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Amazon Product Entry</CardTitle>
             <CardDescription className="text-sm">
-              Provide a valid Amazon.com product URL to begin pricing calculation
+              Choose how to enter Amazon product information
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <Form {...urlForm}>
-              <form onSubmit={urlForm.handleSubmit((data) => extractMutation.mutate(data))} className="space-y-4">
-                <FormField
-                  control={urlForm.control}
-                  name="amazonUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm sm:text-base">Amazon Product URL</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="https://amazon.com/product-url" 
-                          {...field} 
-                          className="text-sm"
-                          data-testid="input-amazon-url"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+            {/* Entry Mode Toggle */}
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
+              <Button
+                variant={entryMode === 'url' ? 'default' : 'outline'}
+                onClick={() => {
+                  setEntryMode('url');
+                  setExtractedProduct(null);
+                  urlForm.reset();
+                  pricingForm.reset();
+                }}
+                className="w-full sm:w-auto text-sm"
+                data-testid="button-url-mode"
+              >
+                Extract from URL
+              </Button>
+              <Button
+                variant={entryMode === 'manual' ? 'default' : 'outline'}
+                onClick={() => {
+                  setEntryMode('manual');
+                  setShowPricingForm(true);
+                  setExtractedProduct({
+                    productName: '',
+                    costUsd: 0,
+                    extractedSuccessfully: false,
+                    amazonUrl: 'Manual Entry',
+                    asin: 'Manual Entry'
+                  });
+                  urlForm.reset();
+                  pricingForm.setValue('amazonUrl', 'Manual Entry');
+                  pricingForm.setValue('productName', '');
+                  pricingForm.setValue('costUsd', 0);
+                }}
+                className="w-full sm:w-auto text-sm"
+                data-testid="button-manual-mode"
+              >
+                Enter Manually
+              </Button>
+            </div>
+
+            {entryMode === 'url' ? (
+              <Form {...urlForm}>
+                <form onSubmit={urlForm.handleSubmit((data) => extractMutation.mutate(data))} className="space-y-4">
+                  <FormField
+                    control={urlForm.control}
+                    name="amazonUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm sm:text-base">Amazon Product URL</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://amazon.com/product-url" 
+                            {...field} 
+                            className="text-sm"
+                            data-testid="input-amazon-url"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit" 
-                  disabled={extractMutation.isPending}
-                  className="w-full sm:w-auto text-sm"
-                  data-testid="button-extract-price"
-                >
-                  {extractMutation.isPending ? 'Processing...' : 'Extract Product Info'}
-                </Button>
-              </form>
-            </Form>
+                  <Button 
+                    type="submit" 
+                    disabled={extractMutation.isPending}
+                    className="w-full sm:w-auto text-sm"
+                    data-testid="button-extract-price"
+                  >
+                    {extractMutation.isPending ? 'Processing...' : 'Extract Product Info'}
+                  </Button>
+                </form>
+              </Form>
+            ) : (
+              <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Manual entry mode selected. Click "Enter Manually" to proceed directly to the pricing form.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
