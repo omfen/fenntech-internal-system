@@ -8,6 +8,8 @@ import Home from "@/pages/home";
 import AmazonPricingPage from "@/pages/amazon-pricing";
 import Dashboard from "@/pages/dashboard";
 import UserManagement from "@/pages/user-management";
+import CustomerInquiries from "@/pages/customer-inquiries";
+import QuotationRequests from "@/pages/quotation-requests";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -35,6 +37,8 @@ function AuthenticatedRouter() {
       <Route path="/amazon-pricing" component={AmazonPricingPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/users" component={UserManagement} />
+      <Route path="/customer-inquiries" component={CustomerInquiries} />
+      <Route path="/quotation-requests" component={QuotationRequests} />
       <Route component={NotFound} />
     </Switch>
   );

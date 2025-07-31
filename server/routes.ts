@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin } from "./auth";
 import authRoutes from "./auth-routes";
-import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, type EmailReport } from "@shared/schema";
+import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, insertCustomerInquirySchema, insertQuotationRequestSchema, type EmailReport } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import nodemailer from "nodemailer";
@@ -202,6 +202,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Delete user error:", error);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Customer Inquiries routes
+  app.get("/api/customer-inquiries", authenticateToken, async (req, res) => {
+    try {
+      const inquiries = await storage.getCustomerInquiries();
+      res.json(inquiries);
+    } catch (error) {
+      console.error("Get customer inquiries error:", error);
+      res.status(500).json({ message: "Failed to fetch customer inquiries" });
+    }
+  });
+
+  app.post("/api/customer-inquiries", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const inquiryData = insertCustomerInquirySchema.parse({
+        ...req.body,
+        userId: req.user!.id,
+      });
+      const inquiry = await storage.createCustomerInquiry(inquiryData);
+      res.status(201).json(inquiry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid inquiry data", errors: error.errors });
+      } else {
+        console.error("Create customer inquiry error:", error);
+        res.status(500).json({ message: "Failed to create customer inquiry" });
+      }
+    }
+  });
+
+  app.put("/api/customer-inquiries/:id", authenticateToken, async (req, res) => {
+    try {
+      const inquiryData = insertCustomerInquirySchema.parse(req.body);
+      const inquiry = await storage.updateCustomerInquiry(req.params.id, inquiryData);
+      if (!inquiry) {
+        return res.status(404).json({ message: "Customer inquiry not found" });
+      }
+      res.json(inquiry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid inquiry data", errors: error.errors });
+      } else {
+        console.error("Update customer inquiry error:", error);
+        res.status(500).json({ message: "Failed to update customer inquiry" });
+      }
+    }
+  });
+
+  app.delete("/api/customer-inquiries/:id", authenticateToken, async (req, res) => {
+    try {
+      const deleted = await storage.deleteCustomerInquiry(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Customer inquiry not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete customer inquiry error:", error);
+      res.status(500).json({ message: "Failed to delete customer inquiry" });
+    }
+  });
+
+  // Quotation Requests routes
+  app.get("/api/quotation-requests", authenticateToken, async (req, res) => {
+    try {
+      const requests = await storage.getQuotationRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error("Get quotation requests error:", error);
+      res.status(500).json({ message: "Failed to fetch quotation requests" });
+    }
+  });
+
+  app.post("/api/quotation-requests", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const requestData = insertQuotationRequestSchema.parse({
+        ...req.body,
+        userId: req.user!.id,
+      });
+      const request = await storage.createQuotationRequest(requestData);
+      res.status(201).json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      } else {
+        console.error("Create quotation request error:", error);
+        res.status(500).json({ message: "Failed to create quotation request" });
+      }
+    }
+  });
+
+  app.put("/api/quotation-requests/:id", authenticateToken, async (req, res) => {
+    try {
+      const requestData = insertQuotationRequestSchema.parse(req.body);
+      const request = await storage.updateQuotationRequest(req.params.id, requestData);
+      if (!request) {
+        return res.status(404).json({ message: "Quotation request not found" });
+      }
+      res.json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      } else {
+        console.error("Update quotation request error:", error);
+        res.status(500).json({ message: "Failed to update quotation request" });
+      }
+    }
+  });
+
+  app.delete("/api/quotation-requests/:id", authenticateToken, async (req, res) => {
+    try {
+      const deleted = await storage.deleteQuotationRequest(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Quotation request not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete quotation request error:", error);
+      res.status(500).json({ message: "Failed to delete quotation request" });
     }
   });
 

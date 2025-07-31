@@ -9,7 +9,7 @@ This is a complete full-stack web application for inventory pricing and manageme
 
 Both systems generate email reports to management and maintain comprehensive pricing history. The application features a modern React frontend with Node.js/Express backend using PostgreSQL for persistent storage.
 
-**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.**
+**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.** **Latest: Customer product inquiries and request for quotation management systems added.**
 
 ## User Preferences
 
@@ -47,6 +47,8 @@ The application follows a monorepo structure with clear separation between clien
 - **Categories Table**: Stores product categories with markup percentages for PDF invoice items
 - **Pricing Sessions Table**: Stores complete PDF invoice calculations with exchange rates and item details
 - **Amazon Pricing Sessions Table**: Stores Amazon product calculations with URLs, cost formulas, and markup logic
+- **Customer Inquiries Table**: Stores customer product inquiries with name, telephone, and item details
+- **Quotation Requests Table**: Stores customer quotation requests with contact info, email, description, and urgency
 - **JSON Storage**: PDF items stored as JSONB for flexible pricing item structure
 
 ### Implemented Features
@@ -75,14 +77,20 @@ The application follows a monorepo structure with clear separation between clien
 17. **Security Features**: Protection against self-demotion/deletion, secure session management, and token-based API authentication
 18. **Default Admin Account**: Pre-created administrator account (admin@fenntechltd.com / FennTech2024!) for initial system access
 
+#### Customer Management Features
+19. **Customer Product Inquiries**: Track customer name, telephone, and product items they're asking about
+20. **Request for Quotation**: Manage customer quotation requests with contact details, email, quote description, and urgency levels (low, medium, high, urgent)
+21. **Full CRUD Operations**: Create, view, edit, and delete both customer inquiries and quotation requests
+22. **Mobile-Responsive Design**: Card-based layouts optimized for mobile viewing and interaction
+
 #### Shared Features
-19. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)
-20. **Enhanced Email Reports**: Automated email system sending detailed reports to management (omar.fennell@gmail.com) including item details, cost price, markup percentage, and final price for both Intcomex and Amazon pricing
-21. **Unified Navigation**: Navigation system with role-based menu items (User Management visible only to administrators)
-22. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
-23. **Professional UI**: Modern interface with system-specific branding and responsive design
-24. **Mobile-Friendly Price Trend Dashboard**: Comprehensive dashboard showing pricing trends, statistics, and recent sessions for both Intcomex and Amazon pricing with mobile-optimized card layouts
-25. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
+23. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)
+24. **Enhanced Email Reports**: Automated email system sending detailed reports to management (omar.fennell@gmail.com) including item details, cost price, markup percentage, and final price for both Intcomex and Amazon pricing
+25. **Unified Navigation**: Navigation system with role-based menu items (User Management visible only to administrators)
+26. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
+27. **Professional UI**: Modern interface with system-specific branding and responsive design
+28. **Mobile-Friendly Price Trend Dashboard**: Comprehensive dashboard showing pricing trends, statistics, and recent sessions for both Intcomex and Amazon pricing with mobile-optimized card layouts
+29. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
 
 ## Data Flow
 

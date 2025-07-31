@@ -107,6 +107,51 @@ export const updateCategorySchema = insertCategorySchema.extend({
 
 export type Category = typeof categories.$inferSelect;
 export type User = typeof users.$inferSelect;
+
+// Customer Product Inquiries table
+export const customerInquiries = pgTable("customer_inquiries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerName: varchar("customer_name").notNull(),
+  telephoneNumber: varchar("telephone_number").notNull(),
+  itemInquiry: varchar("item_inquiry").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  userId: varchar("user_id").references(() => users.id),
+});
+
+export type CustomerInquiry = typeof customerInquiries.$inferSelect;
+export type InsertCustomerInquiry = typeof customerInquiries.$inferInsert;
+
+// Request for Quotation table
+export const quotationRequests = pgTable("quotation_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerName: varchar("customer_name").notNull(),
+  telephoneNumber: varchar("telephone_number").notNull(),
+  emailAddress: varchar("email_address").notNull(),
+  quoteDescription: varchar("quote_description").notNull(),
+  urgency: varchar("urgency").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  userId: varchar("user_id").references(() => users.id),
+});
+
+export type QuotationRequest = typeof quotationRequests.$inferSelect;
+export type InsertQuotationRequest = typeof quotationRequests.$inferInsert;
+
+// Validation schemas
+export const insertCustomerInquirySchema = createInsertSchema(customerInquiries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotationRequestSchema = createInsertSchema(quotationRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const urgencyLevels = ["low", "medium", "high", "urgent"] as const;
 export type Session = typeof sessions.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type UpdateCategory = z.infer<typeof updateCategorySchema>;

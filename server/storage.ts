@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, categories, users, pricingSessions, amazonPricingSessions } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./auth";
@@ -32,6 +32,20 @@ export interface IStorage {
   getAmazonPricingSessionById(id: string): Promise<AmazonPricingSession | undefined>;
   createAmazonPricingSession(session: InsertAmazonPricingSession): Promise<AmazonPricingSession>;
   updateAmazonPricingSessionEmailSent(id: string): Promise<void>;
+
+  // Customer Inquiries
+  getCustomerInquiries(): Promise<CustomerInquiry[]>;
+  getCustomerInquiryById(id: string): Promise<CustomerInquiry | undefined>;
+  createCustomerInquiry(inquiry: InsertCustomerInquiry): Promise<CustomerInquiry>;
+  updateCustomerInquiry(id: string, updates: Partial<CustomerInquiry>): Promise<CustomerInquiry | undefined>;
+  deleteCustomerInquiry(id: string): Promise<boolean>;
+
+  // Quotation Requests
+  getQuotationRequests(): Promise<QuotationRequest[]>;
+  getQuotationRequestById(id: string): Promise<QuotationRequest | undefined>;
+  createQuotationRequest(request: InsertQuotationRequest): Promise<QuotationRequest>;
+  updateQuotationRequest(id: string, updates: Partial<QuotationRequest>): Promise<QuotationRequest | undefined>;
+  deleteQuotationRequest(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -100,6 +114,76 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Customer Inquiries methods
+  async getCustomerInquiries(): Promise<CustomerInquiry[]> {
+    return await db.select().from(customerInquiries).orderBy(customerInquiries.createdAt);
+  }
+
+  async getCustomerInquiryById(id: string): Promise<CustomerInquiry | undefined> {
+    const [inquiry] = await db.select().from(customerInquiries).where(eq(customerInquiries.id, id));
+    return inquiry || undefined;
+  }
+
+  async createCustomerInquiry(inquiryData: InsertCustomerInquiry): Promise<CustomerInquiry> {
+    const [inquiry] = await db
+      .insert(customerInquiries)
+      .values(inquiryData)
+      .returning();
+    return inquiry;
+  }
+
+  async updateCustomerInquiry(id: string, updates: Partial<CustomerInquiry>): Promise<CustomerInquiry | undefined> {
+    const [inquiry] = await db
+      .update(customerInquiries)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(customerInquiries.id, id))
+      .returning();
+    return inquiry || undefined;
+  }
+
+  async deleteCustomerInquiry(id: string): Promise<boolean> {
+    const result = await db.delete(customerInquiries).where(eq(customerInquiries.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Quotation Requests methods
+  async getQuotationRequests(): Promise<QuotationRequest[]> {
+    return await db.select().from(quotationRequests).orderBy(quotationRequests.createdAt);
+  }
+
+  async getQuotationRequestById(id: string): Promise<QuotationRequest | undefined> {
+    const [request] = await db.select().from(quotationRequests).where(eq(quotationRequests.id, id));
+    return request || undefined;
+  }
+
+  async createQuotationRequest(requestData: InsertQuotationRequest): Promise<QuotationRequest> {
+    const [request] = await db
+      .insert(quotationRequests)
+      .values(requestData)
+      .returning();
+    return request;
+  }
+
+  async updateQuotationRequest(id: string, updates: Partial<QuotationRequest>): Promise<QuotationRequest | undefined> {
+    const [request] = await db
+      .update(quotationRequests)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(quotationRequests.id, id))
+      .returning();
+    return request || undefined;
+  }
+
+  async deleteQuotationRequest(id: string): Promise<boolean> {
+    const result = await db.delete(quotationRequests).where(eq(quotationRequests.id, id));
     return result.rowCount > 0;
   }
 

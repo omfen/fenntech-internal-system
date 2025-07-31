@@ -1,4 +1,4 @@
-import { Calculator, BarChart3, DollarSign, Users } from "lucide-react";
+import { Calculator, BarChart3, DollarSign, Users, Phone, FileText } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,8 @@ export default function Navigation() {
     { path: "/", label: "Intcomex Pricing", icon: Calculator },
     { path: "/amazon-pricing", label: "Amazon Pricing", icon: DollarSign },
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
+    { path: "/customer-inquiries", label: "Customer Inquiries", icon: Phone },
+    { path: "/quotation-requests", label: "Quotation Requests", icon: FileText },
   ];
 
   // Add user management for administrators
