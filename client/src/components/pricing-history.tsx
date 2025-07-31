@@ -205,21 +205,31 @@ export default function PricingHistory() {
   };
 
   const handleEdit = (session: PricingSession) => {
+    console.log('Edit session data:', session);
     setSelectedSession(session);
     const items = session.items as any[] || [];
-    const editableItems = items.map((item, index) => ({
-      id: item.id || `item-${index}`,
-      description: item.description || item.partNumber || '',
-      categoryId: item.categoryId || '',
-      costPrice: parseFloat(item.costPrice || item.unitPrice || 0),
-      quantity: parseInt(item.quantity || 1),
-    }));
+    console.log('Session items:', items);
+    
+    const editableItems = items.map((item, index) => {
+      console.log(`Item ${index}:`, item);
+      return {
+        id: item.id || `item-${index}`,
+        description: item.description || item.partNumber || item.name || '',
+        categoryId: item.categoryId || item.category?.id || '',
+        costPrice: parseFloat(item.costPrice || item.costUsd || item.unitPrice || item.cost || 0),
+        quantity: parseInt(item.quantity || item.qty || 1),
+      };
+    });
+    
+    console.log('Editable items:', editableItems);
+    console.log('Exchange rate:', session.exchangeRate);
+    console.log('Rounding option:', session.roundingOption);
     
     // Reset form and set all values
     editForm.reset();
     editForm.setValue('items', editableItems);
     editForm.setValue('exchangeRate', parseFloat(session.exchangeRate || '162'));
-    editForm.setValue('roundingOption', (session.roundingOption || 'none') as any);
+    editForm.setValue('roundingOption', session.roundingOption || 'none');
     editForm.setValue('notes', '');
     setShowEditDialog(true);
   };
