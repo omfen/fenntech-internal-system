@@ -2,7 +2,9 @@
 
 ## Overview
 
-This is a full-stack web application for inventory pricing and management built for FennTech. The system allows users to upload PDF invoices, extract pricing information, apply category-based markups, calculate Jamaican Dollar (JMD) pricing, and generate reports. The application features a modern React frontend with a Node.js/Express backend using PostgreSQL for data persistence.
+This is a complete full-stack web application for inventory pricing and management built for FennTech. The system processes PDF invoices, extracts pricing information, applies category-based markups, calculates Jamaican Dollar (JMD) pricing with 15% GCT, and generates email reports to management. The application features a modern React frontend with a Node.js/Express backend using in-memory storage for development.
+
+**Status: Fully functional and operational** - All core features implemented and tested.
 
 ## User Preferences
 
@@ -39,13 +41,15 @@ The application follows a monorepo structure with clear separation between clien
 - **Pricing Sessions Table**: Stores complete pricing calculations with invoice data, exchange rates, and item details
 - **JSON Storage**: Items stored as JSONB for flexible pricing item structure
 
-### Key Features
-1. **PDF Invoice Processing**: Upload and extract item data from PDF invoices
-2. **Category Management**: Create, edit, and manage product categories with markup percentages
-3. **Dynamic Pricing Calculator**: Real-time price calculations with exchange rate conversion
-4. **Pricing History**: Track and review previous pricing sessions
-5. **Email Reports**: Send formatted pricing reports to management
-6. **Responsive Design**: Mobile-first responsive interface
+### Implemented Features
+1. **PDF Invoice Processing**: Upload and extract item data from PDF invoices using pdf-parse
+2. **Category Management**: Pre-loaded categories with specified markups (Accessories-100%, Ink-45%, Sub Woofers-35%, Speakers-45%, Headphones-65%, UPS-50%, Laptop Bags-50%, Laptops-25%, Desktops-25%, Adaptors-65%, Routers-50%)
+3. **Dynamic Pricing Calculator**: Real-time calculations following the formula: (Item cost × exchange rate) + 15% GCT, then apply markup percentage
+4. **Rounding Options**: Round final prices to nearest $100, $1,000, or $10,000 JMD
+5. **Pricing History**: Complete tracking and display of all pricing sessions
+6. **Email Reports**: Automated email system sending detailed reports to management (omar.fennell@gmail.com)
+7. **Exchange Rate Management**: Manual daily USD to JMD rate updates
+8. **Professional UI**: Modern interface with FennTech branding and responsive design
 
 ## Data Flow
 
