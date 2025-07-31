@@ -17,7 +17,7 @@ import Navigation from "@/components/navigation";
 import ViewOptions from "@/components/view-options";
 import { apiRequest } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { insertTicketSchema, type Ticket as TicketType, type InsertTicket } from "@shared/schema";
+import { insertTicketSchema, type Ticket as TicketType, type InsertTicket, ticketStatusLevels } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { z } from "zod";

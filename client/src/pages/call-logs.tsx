@@ -17,7 +17,7 @@ import Navigation from "@/components/navigation";
 import ViewOptions from "@/components/view-options";
 import { apiRequest } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { insertCallLogSchema, type CallLog, type InsertCallLog, callTypeLevels, callPurposeLevels, callOutcomeLevels } from "@shared/schema";
+import { insertCallLogSchema, type CallLog, type InsertCallLog, callTypeLevels, callPurposeLevels, callOutcomeLevels, callStatusLevels } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
@@ -29,6 +29,7 @@ const formSchema = insertCallLogSchema.extend({
   notes: z.string().optional(),
   duration: z.string().optional(),
   outcome: z.string().optional(),
+  status: z.string().default("pending"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -102,6 +103,7 @@ export default function CallLogsPage() {
       notes: "",
       duration: "",
       outcome: "answered",
+      status: "pending",
     },
   });
 
@@ -195,6 +197,7 @@ export default function CallLogsPage() {
       notes: callLog.notes || "",
       duration: callLog.duration || "",
       outcome: callLog.outcome || "answered",
+      status: callLog.status || "pending",
       assignedUserId: callLog.assignedUserId || undefined,
     });
     setIsCreateOpen(true);
@@ -233,6 +236,21 @@ export default function CallLogsPage() {
         return <Badge variant="outline" className="text-purple-600 border-purple-300">Follow-up Needed</Badge>;
       default:
         return <Badge variant="outline">{outcome}</Badge>;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-300">Pending</Badge>;
+      case "in_progress":
+        return <Badge variant="outline" className="text-blue-600 border-blue-300">In Progress</Badge>;
+      case "completed":
+        return <Badge variant="outline" className="text-green-600 border-green-300">Completed</Badge>;
+      case "follow_up_required":
+        return <Badge variant="outline" className="text-purple-600 border-purple-300">Follow-up Required</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 

@@ -280,8 +280,10 @@ export const callLogs = pgTable("call_logs", {
   notes: text("notes"),
   duration: varchar("duration"), // in format "MM:SS"
   outcome: varchar("outcome"), // answered, voicemail, busy, no_answer, resolved, follow_up_needed
+  status: varchar("status").default("pending"), // pending, in_progress, completed, follow_up_required
   followUpDate: timestamp("follow_up_date"),
   assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  statusHistory: jsonb("status_history").default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -360,6 +362,7 @@ export const quotationStatusLevels = ["pending", "in_progress", "quoted", "accep
 export const callTypeLevels = ["incoming", "outgoing"] as const;
 export const callPurposeLevels = ["inquiry", "support", "follow_up", "quote", "complaint", "other"] as const;
 export const callOutcomeLevels = ["answered", "voicemail", "busy", "no_answer", "resolved", "follow_up_needed"] as const;
+export const callStatusLevels = ["pending", "in_progress", "completed", "follow_up_required"] as const;
 export type Session = typeof sessions.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type UpdateCategory = z.infer<typeof updateCategorySchema>;
