@@ -85,7 +85,7 @@ export default function TicketsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertTicket) => {
-      return await apiRequest("/api/tickets", "POST", { ...data, createdById: user?.id });
+      return await apiRequest("POST", "/api/tickets", { ...data, createdById: user?.id });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
@@ -108,7 +108,7 @@ export default function TicketsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<TicketType> }) => {
-      return await apiRequest(`/api/tickets/${id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/tickets/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
@@ -130,7 +130,7 @@ export default function TicketsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/tickets/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/tickets/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tickets"] });
