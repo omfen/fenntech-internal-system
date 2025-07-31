@@ -102,6 +102,18 @@ export default function Navigation() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Help */}
+            <Link href="/help">
+              <Button
+                variant={isActive("/help") ? "default" : "ghost"}
+                className="flex items-center space-x-2"
+                data-testid="nav-help"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Help</span>
+              </Button>
+            </Link>
+
             {/* Admin User Management */}
             {user?.role === 'administrator' && (
               <Link href="/users">

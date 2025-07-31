@@ -21,7 +21,7 @@ export default function Header() {
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate" data-testid="app-title">FennTech Internal App</h1>
-              <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Inventory Pricing & Management</p>
+              <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Inventory Pricing, Management, Tasks and More...</p>
             </div>
           </div>
           

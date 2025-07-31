@@ -8,6 +8,7 @@ import { z } from "zod";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import { AmazonProductAPI } from "./amazon-api";
+import { HelpService } from "./help-service";
 import type { AuthenticatedRequest } from "./auth";
 // pdf-parse will be dynamically imported when needed
 
