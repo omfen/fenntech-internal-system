@@ -154,14 +154,7 @@ export default function Navigation() {
                     Invoices
                   </Link>
                 </DropdownMenuItem>
-                {user?.role === 'administrator' && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/company-settings">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Company Settings
-                    </Link>
-                  </DropdownMenuItem>
-                )}
+
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -177,18 +170,35 @@ export default function Navigation() {
               </Button>
             </Link>
 
-            {/* Admin User Management */}
+            {/* Administrator Dropdown */}
             {user?.role === 'administrator' && (
-              <Link href="/users">
-                <Button
-                  variant={isActive("/users") ? "default" : "ghost"}
-                  className="flex items-center space-x-2"
-                  data-testid="nav-user-management"
-                >
-                  <Users className="h-4 w-4" />
-                  <span className="hidden sm:inline">User Management</span>
-                </Button>
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center space-x-2"
+                    data-testid="nav-administrator-dropdown"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden sm:inline">Administrator</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem asChild>
+                    <Link href="/users">
+                      <Users className="h-4 w-4 mr-2" />
+                      User Management
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/company-settings">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Company Settings
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
