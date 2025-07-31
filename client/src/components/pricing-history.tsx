@@ -18,16 +18,22 @@ import { Download, Eye, Send, FileText, Calculator, Edit } from "lucide-react";
 import type { PricingSession, Category } from "@shared/schema";
 
 // Zod schemas for validation
+const itemEditSchema = z.object({
+  id: z.string(),
+  description: z.string().min(1, "Description is required"),
+  categoryId: z.string().min(1, "Category is required"),
+  costPrice: z.number().min(0.01, "Cost price must be greater than 0"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+});
+
 const intcomexEditSchema = z.object({
-  pdfName: z.string().min(1, "PDF name is required"),
-  totalItemsUsd: z.number().min(0.01, "Total must be greater than 0"),
-  gctAmount: z.number().min(0, "GCT amount must be positive"),
-  finalTotalJmd: z.number().min(0.01, "Final total must be greater than 0"),
+  items: z.array(itemEditSchema),
   exchangeRate: z.number().min(1, "Exchange rate must be valid"),
   roundingOption: z.enum(['none', 'nearest_5', 'nearest_10', 'nearest_50', 'nearest_100']),
   notes: z.string().optional(),
 });
 
+type ItemEditForm = z.infer<typeof itemEditSchema>;
 type IntcomexEditForm = z.infer<typeof intcomexEditSchema>;
 
 export default function PricingHistory() {
@@ -55,10 +61,7 @@ export default function PricingHistory() {
   const editForm = useForm<IntcomexEditForm>({
     resolver: zodResolver(intcomexEditSchema),
     defaultValues: {
-      pdfName: '',
-      totalItemsUsd: 0,
-      gctAmount: 0,
-      finalTotalJmd: 0,
+      items: [],
       exchangeRate: 162,
       roundingOption: 'none',
       notes: '',
@@ -66,14 +69,38 @@ export default function PricingHistory() {
   });
 
   // Watch form values for real-time calculations
-  const totalItemsUsd = editForm.watch('totalItemsUsd') || 0;
+  const watchedItems = editForm.watch('items') || [];
   const exchangeRate = editForm.watch('exchangeRate') || 162;
   const roundingOption = editForm.watch('roundingOption') || 'none';
 
-  // Real-time calculations
-  const totalJmd = totalItemsUsd * exchangeRate;
-  const gctAmount = totalJmd * 0.15; // 15% GCT
-  const beforeRounding = totalJmd + gctAmount;
+  // Calculate individual item pricing
+  const calculateItemPricing = (item: ItemEditForm, category: Category | undefined) => {
+    if (!category) return { finalPriceJmd: 0, finalPriceUsd: 0 };
+    
+    const costUsd = item.costPrice;
+    const markupMultiplier = 1 + (category.markupPercentage / 100);
+    const finalPriceUsd = costUsd * markupMultiplier;
+    const finalPriceJmd = finalPriceUsd * exchangeRate;
+    
+    return { finalPriceJmd, finalPriceUsd };
+  };
+
+  // Real-time calculations for all items
+  const calculatedItems = watchedItems.map(item => {
+    const category = categories.find(cat => cat.id === item.categoryId);
+    const pricing = calculateItemPricing(item, category);
+    return {
+      ...item,
+      category,
+      ...pricing,
+      totalFinalPriceJmd: pricing.finalPriceJmd * item.quantity
+    };
+  });
+
+  const totalItemsUsd = calculatedItems.reduce((sum, item) => sum + (item.costPrice * item.quantity), 0);
+  const totalBeforeGct = calculatedItems.reduce((sum, item) => sum + item.totalFinalPriceJmd, 0);
+  const gctAmount = totalBeforeGct * 0.15; // 15% GCT
+  const beforeRounding = totalBeforeGct + gctAmount;
   
   const applyRounding = (amount: number, option: string) => {
     switch (option) {
@@ -86,12 +113,6 @@ export default function PricingHistory() {
   };
 
   const finalTotalJmd = applyRounding(beforeRounding, roundingOption);
-
-  // Update form when calculations change
-  useEffect(() => {
-    editForm.setValue('gctAmount', gctAmount);
-    editForm.setValue('finalTotalJmd', finalTotalJmd);
-  }, [gctAmount, finalTotalJmd, editForm]);
 
   // Download PDF mutation
   const downloadMutation = useMutation({
@@ -127,10 +148,9 @@ export default function PricingHistory() {
   const updateSessionMutation = useMutation({
     mutationFn: async ({ sessionId, data }: { sessionId: string; data: IntcomexEditForm }) => {
       const sessionData = {
-        pdfName: data.pdfName,
-        totalItemsUsd: data.totalItemsUsd.toString(),
-        gctAmount: data.gctAmount.toString(),
-        finalTotalJmd: data.finalTotalJmd.toString(),
+        items: data.items,
+        totalItemsUsd: totalItemsUsd.toString(),
+        totalValue: finalTotalJmd.toString(),
         exchangeRate: data.exchangeRate.toString(),
         roundingOption: data.roundingOption,
         notes: data.notes || '',
@@ -186,10 +206,16 @@ export default function PricingHistory() {
 
   const handleEdit = (session: PricingSession) => {
     setSelectedSession(session);
-    editForm.setValue('pdfName', session.pdfName);
-    editForm.setValue('totalItemsUsd', parseFloat(session.totalItemsUsd));
-    editForm.setValue('gctAmount', parseFloat(session.gctAmount));
-    editForm.setValue('finalTotalJmd', parseFloat(session.finalTotalJmd));
+    const items = session.items as any[] || [];
+    const editableItems = items.map(item => ({
+      id: item.id || Math.random().toString(),
+      description: item.description || '',
+      categoryId: item.categoryId || '',
+      costPrice: parseFloat(item.costPrice) || 0,
+      quantity: item.quantity || 1,
+    }));
+    
+    editForm.setValue('items', editableItems);
     editForm.setValue('exchangeRate', parseFloat(session.exchangeRate));
     editForm.setValue('roundingOption', session.roundingOption as any);
     editForm.setValue('notes', session.notes || '');
@@ -604,51 +630,21 @@ export default function PricingHistory() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Session Dialog */}
+      {/* Edit Session Dialog - Item Level Editing */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Edit className="h-5 w-5" />
-              <span>Edit Intcomex Pricing Session</span>
+              <span>Edit Intcomex Pricing Session - Item Details</span>
             </DialogTitle>
           </DialogHeader>
           {selectedSession && (
             <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit((data) => updateSessionMutation.mutate({ sessionId: selectedSession.id, data }))} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="pdfName"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>PDF Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter PDF name" data-testid="input-edit-pdf-name" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="totalItemsUsd"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Total Items (USD)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            data-testid="input-edit-total-usd"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <form onSubmit={editForm.handleSubmit((data) => updateSessionMutation.mutate({ sessionId: selectedSession.id, data }))} className="space-y-6">
+                
+                {/* Session Settings */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <FormField
                     control={editForm.control}
                     name="exchangeRate"
@@ -660,6 +656,7 @@ export default function PricingHistory() {
                             type="number"
                             step="0.01"
                             {...field}
+                            value={field.value || 162}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 162)}
                             data-testid="input-edit-exchange-rate"
                           />
@@ -672,9 +669,9 @@ export default function PricingHistory() {
                     control={editForm.control}
                     name="roundingOption"
                     render={({ field }) => (
-                      <FormItem className="md:col-span-2">
+                      <FormItem>
                         <FormLabel>Rounding Option</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-edit-rounding">
+                        <Select onValueChange={field.onChange} value={field.value} data-testid="select-edit-rounding">
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select rounding option" />
@@ -694,15 +691,124 @@ export default function PricingHistory() {
                   />
                 </div>
 
-                {/* Real-time Calculations Display */}
-                {totalItemsUsd > 0 && (
-                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
-                    <h4 className="font-semibold text-sm">Updated Calculations:</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>Total (JMD): <strong>${totalJmd.toLocaleString()}</strong></div>
-                      <div>GCT (15%): <strong>${gctAmount.toLocaleString()}</strong></div>
-                      <div>Before Rounding: <strong>${beforeRounding.toLocaleString()}</strong></div>
-                      <div className="text-green-600 font-semibold">Final Total: <strong>${finalTotalJmd.toLocaleString()} JMD</strong></div>
+                {/* Items List */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-lg">Edit Individual Items</h4>
+                  <div className="space-y-3">
+                    {watchedItems.map((item, index) => {
+                      const calculatedItem = calculatedItems[index];
+                      const category = calculatedItem?.category;
+                      
+                      return (
+                        <div key={item.id || index} className="p-4 border rounded-lg space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <FormField
+                              control={editForm.control}
+                              name={`items.${index}.description`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Description</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="Item description" data-testid={`input-item-description-${index}`} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={editForm.control}
+                              name={`items.${index}.categoryId`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Category</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value} data-testid={`select-item-category-${index}`}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select category" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {categories.map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                          {cat.name} ({cat.markupPercentage}%)
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={editForm.control}
+                              name={`items.${index}.costPrice`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Cost Price (USD)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      {...field}
+                                      value={field.value || 0}
+                                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                      data-testid={`input-item-cost-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={editForm.control}
+                              name={`items.${index}.quantity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Quantity</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      {...field}
+                                      value={field.value || 1}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                      data-testid={`input-item-quantity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          
+                          {/* Real-time calculations for this item */}
+                          {calculatedItem && category && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded text-sm">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <div><strong>Markup:</strong> {category.markupPercentage}%</div>
+                                <div><strong>Price USD:</strong> ${calculatedItem.finalPriceUsd.toFixed(2)}</div>
+                                <div><strong>Price JMD:</strong> ${calculatedItem.finalPriceJmd.toFixed(2)}</div>
+                                <div><strong>Total JMD:</strong> ${calculatedItem.totalFinalPriceJmd.toFixed(2)}</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Summary Calculations */}
+                {calculatedItems.length > 0 && (
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                    <h4 className="font-semibold text-lg mb-3">Session Summary</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div><strong>Total Cost USD:</strong> ${totalItemsUsd.toFixed(2)}</div>
+                      <div><strong>Total Before GCT:</strong> ${totalBeforeGct.toFixed(2)}</div>
+                      <div><strong>GCT (15%):</strong> ${gctAmount.toFixed(2)}</div>
+                      <div className="text-green-600 font-semibold md:col-span-4">
+                        <strong>Final Total JMD:</strong> ${finalTotalJmd.toLocaleString()}
+                      </div>
                     </div>
                   </div>
                 )}
