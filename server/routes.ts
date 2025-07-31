@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin } from "./auth";
 import authRoutes from "./auth-routes";
-import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, insertCustomerInquirySchema, insertQuotationRequestSchema, insertWorkOrderSchema, insertTicketSchema, type EmailReport } from "@shared/schema";
+import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, insertCustomerInquirySchema, insertQuotationRequestSchema, insertWorkOrderSchema, insertTicketSchema, type EmailReport, type User } from "@shared/schema";
+import { insertTaskSchema } from "@shared/task-schema";
 import { z } from "zod";
 import multer from "multer";
 import nodemailer from "nodemailer";
@@ -1273,11 +1274,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tasks", authenticateToken, async (req, res) => {
+  app.post("/api/tasks", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const user = req.user as User;
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      const validatedData = insertTaskSchema.parse(req.body);
       const taskData = {
-        ...req.body,
+        ...validatedData,
         createdById: user.id,
         createdByName: `${user.firstName} ${user.lastName}`,
       };
@@ -1291,10 +1296,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const task = await storage.createTask(taskData);
-      res.json(task);
+      res.status(201).json(task);
     } catch (error) {
       console.error("Error creating task:", error);
-      res.status(500).json({ error: "Failed to create task" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Validation failed", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to create task" });
+      }
     }
   });
 

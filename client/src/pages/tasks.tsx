@@ -61,8 +61,10 @@ export default function Tasks() {
       urgencyLevel: "medium",
       priority: "normal",
       status: "pending",
+      assignedUserId: "unassigned",
       tags: [],
       notes: "",
+      dueDate: "",
     },
   });
 
@@ -147,8 +149,8 @@ export default function Tasks() {
       urgencyLevel: task.urgencyLevel as any,
       priority: task.priority as any,
       status: task.status as any,
-      assignedUserId: task.assignedUserId || "",
-      dueDate: task.dueDate ? (task.dueDate instanceof Date ? format(task.dueDate, "yyyy-MM-dd") : task.dueDate.toString().split('T')[0]) : "",
+      assignedUserId: task.assignedUserId || "unassigned",
+      dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
       tags: task.tags || [],
       notes: task.notes || "",
     });
@@ -347,7 +349,7 @@ export default function Tasks() {
                       <FormControl>
                         <Input 
                           type="date" 
-                          value={field.value || ""} 
+                          value={typeof field.value === 'string' ? field.value : (field.value ? format(new Date(field.value), "yyyy-MM-dd") : "")} 
                           onChange={field.onChange}
                           onBlur={field.onBlur}
                           name={field.name}
