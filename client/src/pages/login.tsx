@@ -25,18 +25,7 @@ export default function LoginPage() {
           </Button>
         </div>
         
-        {!showRegister && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">Default Admin Access</h3>
-            <p className="text-xs text-blue-700">
-              Email: admin@fenntechltd.com<br />
-              Password: FennTech2024!
-            </p>
-            <p className="text-xs text-blue-600 mt-2">
-              Please change this password after first login
-            </p>
-          </div>
-        )}
+
       </div>
     </div>
   );

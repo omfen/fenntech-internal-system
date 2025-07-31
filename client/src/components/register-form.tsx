@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { insertUserSchema, userRoles, type InsertUser } from "@shared/schema";
+import { insertUserSchema, type InsertUser } from "@shared/schema";
 import { UserPlus, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
 
 export function RegisterForm() {
@@ -23,13 +22,14 @@ export function RegisterForm() {
       password: "",
       firstName: "",
       lastName: "",
-      role: "user",
     },
   });
 
   const onSubmit = async (data: InsertUser) => {
     try {
-      await register(data);
+      // Set default role as 'user' for all new registrations
+      const userData = { ...data, role: "user" };
+      await register(userData);
       toast({
         title: "Registration successful",
         description: "Your account has been created successfully!",
@@ -165,30 +165,7 @@ export function RegisterForm() {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-role">
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {userRoles.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {role === "administrator" ? "Administrator" : "User"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
 
             <Button
               type="submit"
