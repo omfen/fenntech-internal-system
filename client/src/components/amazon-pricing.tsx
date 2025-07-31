@@ -163,11 +163,11 @@ export function AmazonPricing() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/amazon-pricing-sessions'] });
       toast({
-        title: "Amazon pricing session created",
-        description: "The pricing calculation has been saved successfully",
+        title: "Pricing Saved Successfully",
+        description: `Session ${data.id} saved. You can send an email report from the pricing history.`,
       });
       setShowPricingForm(false);
       setExtractedProduct(null);
@@ -180,10 +180,10 @@ export function AmazonPricing() {
         notes: '',
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: "Error creating session",
-        description: "Failed to save the pricing calculation",
+        title: "Save Failed",
+        description: error.message || "Failed to save the pricing calculation",
         variant: "destructive",
       });
     },
@@ -219,10 +219,14 @@ export function AmazonPricing() {
       setSelectedSession(null);
       emailForm.reset();
     },
-    onError: () => {
+    onError: (error: any) => {
+      let errorMessage = error.message || "Failed to send the pricing report";
+      if (error.message.includes("not configured")) {
+        errorMessage = "Email service not configured. Please contact administrator.";
+      }
       toast({
-        title: "Error sending email",
-        description: "Failed to send the pricing report",
+        title: "Email Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     },

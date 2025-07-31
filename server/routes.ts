@@ -654,6 +654,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Email report
   app.post("/api/send-email-report", async (req, res) => {
     try {
+      // Check if email is configured
+      const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
+      const emailPass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
+      
+      if (!emailUser || !emailPass) {
+        return res.status(500).json({ 
+          message: "Email service not configured. Please contact administrator to set up email credentials." 
+        });
+      }
+
       const emailReportSchema = z.object({
         to: z.string().email(),
         subject: z.string(),

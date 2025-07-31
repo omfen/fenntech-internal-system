@@ -34,14 +34,20 @@ export default function EmailReports() {
     },
     onSuccess: () => {
       toast({
-        title: "Email Sent",
+        title: "Email Sent Successfully",
         description: "Pricing report sent to management successfully",
       });
+      setSessionId(""); // Clear the session ID after successful send
+      setNotes(""); // Clear notes
     },
     onError: (error: any) => {
+      let errorMessage = error.message || "Failed to send email report";
+      if (error.message.includes("session not found")) {
+        errorMessage = "Please check the session ID and try again";
+      }
       toast({
         title: "Email Failed",
-        description: error.message || "Failed to send email report",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -178,9 +184,13 @@ export default function EmailReports() {
         </div>
 
         {!sessionId && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800" data-testid="warning-no-session">
-              <strong>Note:</strong> You need to create and save a pricing calculation first, then copy the session ID from the pricing history to send a report.
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800" data-testid="warning-no-session">
+              <strong>How to send a report:</strong> 
+              <br/>1. Go to Intcomex or Amazon Pricing and create a pricing calculation
+              <br/>2. Click "Save & Get Session ID" to save it
+              <br/>3. Copy the session ID from the success message 
+              <br/>4. Paste it above and click "Send Report"
             </p>
           </div>
         )}

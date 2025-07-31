@@ -73,17 +73,17 @@ export default function PricingCalculator({ exchangeRate }: PricingCalculatorPro
       const response = await apiRequest('POST', '/api/pricing-sessions', sessionData);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Pricing Saved",
-        description: "Pricing calculation saved successfully",
+        title: "Pricing Saved & Report Sent",
+        description: `Session ${data.id} saved successfully. Copy this ID to send email reports.`,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/pricing-sessions"] });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Save Failed",
-        description: "Failed to save pricing calculation",
+        description: error.message || "Failed to save pricing calculation",
         variant: "destructive",
       });
     },
@@ -460,7 +460,7 @@ export default function PricingCalculator({ exchangeRate }: PricingCalculatorPro
             data-testid="button-save-report"
           >
             <Save className="w-4 h-4 mr-2" />
-            Save & Send Report
+            {saveMutation.isPending ? "Saving..." : "Save & Get Session ID"}
           </Button>
         </div>
       </CardContent>
