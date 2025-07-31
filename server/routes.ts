@@ -529,6 +529,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: 'Amazon Product B0BYYR57GQ - Please enter product name and cost',
           price: 0
         },
+        'B01JN4YDX8': {
+          name: 'Amazon Product B01JN4YDX8 - Please enter product name and cost',
+          price: 0
+        },
         // Add more known products as needed
       };
 
