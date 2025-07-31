@@ -9,7 +9,7 @@ This is a complete full-stack web application for inventory pricing and manageme
 
 Both systems generate email reports to management and maintain comprehensive pricing history. The application features a modern React frontend with Node.js/Express backend using PostgreSQL for persistent storage.
 
-**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.** **Latest: Customer product inquiries, quotation management, work orders with automated status email notifications, tickets system, call logs, and comprehensive task management system all fully implemented. Enhanced user management now supports multiple email domains (@fenntechltd.com, @876get.com) with admin authentication for other domains.**
+**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.** **Latest: Customer product inquiries, quotation management, work orders with automated status email notifications, tickets system, call logs, and comprehensive task management system all fully implemented. Enhanced user management now supports multiple email domains (@fenntechltd.com, @876get.com) with admin authentication for other domains.** **New Enhancement: Due date management system implemented across all entities (quotation requests, tasks, tickets, customer inquiries, work orders) with comprehensive dashboard visibility showing overdue items, due today, due tomorrow, and due this week. Daily motivation section added to dashboard with inspirational business quotes.**
 
 ## User Preferences
 
@@ -47,9 +47,11 @@ The application follows a monorepo structure with clear separation between clien
 - **Categories Table**: Stores product categories with markup percentages for PDF invoice items
 - **Pricing Sessions Table**: Stores complete PDF invoice calculations with exchange rates and item details
 - **Amazon Pricing Sessions Table**: Stores Amazon product calculations with URLs, cost formulas, and markup logic
-- **Customer Inquiries Table**: Stores customer product inquiries with name, telephone, item details, status, and history tracking
-- **Quotation Requests Table**: Stores customer quotation requests with contact info, email, description, urgency, status, and history tracking
+- **Customer Inquiries Table**: Stores customer product inquiries with name, telephone, item details, status, due dates, and history tracking
+- **Quotation Requests Table**: Stores customer quotation requests with contact info, email, description, urgency, status, due dates, and history tracking
 - **Call Logs Table**: Stores customer call information with type, purpose, duration, outcome, and follow-up dates
+- **Work Orders Table**: Stores customer work orders with due dates, status tracking, and automated email notifications
+- **Tickets Table**: Stores internal tickets with due dates, priority levels, and assignment capabilities
 - **Status History Tables**: Track all status changes with timestamps and audit trails for customer inquiries, quotation requests, and tickets
 - **JSON Storage**: PDF items stored as JSONB for flexible pricing item structure and status history tracking
 
@@ -93,15 +95,18 @@ The application follows a monorepo structure with clear separation between clien
 28. **Status Management with History**: All customer interactions and tasks have status tracking with timestamps and audit trails
 29. **Navigation Reorganization**: Customer features grouped under unified "Customers" dropdown for better organization
 30. **Mobile-Responsive Design**: Card-based layouts optimized for mobile viewing and interaction
+31. **Due Date Management System**: Comprehensive due date tracking across all entities with dashboard notifications for overdue, due today, due tomorrow, and due this week items
+32. **Daily Motivation Dashboard**: Inspirational business quotes rotated daily to motivate team members with focus on excellence, customer service, and technology leadership
 
 #### Shared Features
-30. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)
-31. **Enhanced Email Systems**: Automated pricing reports to management and professional customer status update emails for work orders
-32. **Unified Navigation**: Navigation system with Dashboard first, Pricing dropdown (Intcomex/Amazon), Customers dropdown (Inquiries/Quotes/Work Orders/Call Logs/Tickets), and role-based menu items
-33. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
-34. **Professional UI**: Modern interface with system-specific branding and responsive design
-35. **Mobile-Friendly Price Trend Dashboard**: Comprehensive dashboard showing pricing trends, statistics, and recent sessions for both Intcomex and Amazon pricing with mobile-optimized card layouts
-36. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
+33. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)
+34. **Enhanced Email Systems**: Automated pricing reports to management and professional customer status update emails for work orders
+35. **Unified Navigation**: Navigation system with Dashboard first, Pricing dropdown (Intcomex/Amazon), Customers dropdown (Inquiries/Quotes/Work Orders/Call Logs/Tickets), and role-based menu items
+36. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
+37. **Professional UI**: Modern interface with system-specific branding and responsive design
+38. **Mobile-Friendly Price Trend Dashboard**: Comprehensive dashboard showing pricing trends, statistics, and recent sessions for both Intcomex and Amazon pricing with mobile-optimized card layouts
+39. **Due Date Dashboard Integration**: Real-time visibility of all due dates across the system with color-coded urgency indicators and prioritized attention alerts
+40. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
 
 ## Data Flow
 

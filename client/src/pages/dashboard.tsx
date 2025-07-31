@@ -15,12 +15,17 @@ import {
   Users,
   DollarSign,
   Upload,
-  ShoppingCart
+  ShoppingCart,
+  Calendar,
+  Star,
+  Lightbulb,
+  Target
 } from 'lucide-react';
 import Header from '@/components/header';
 import Navigation from '@/components/navigation';
 import PriceTrendDashboard from '@/components/price-trend-dashboard';
-import type { WorkOrder, Ticket, CustomerInquiry, QuotationRequest } from '@shared/schema';
+import type { WorkOrder, Ticket, CustomerInquiry, QuotationRequest, Task } from '@shared/schema';
+import { format, isAfter, isBefore, addDays } from 'date-fns';
 
 export default function Dashboard() {
   const { data: workOrders = [] } = useQuery<WorkOrder[]>({
@@ -38,6 +43,123 @@ export default function Dashboard() {
   const { data: quotationRequests = [] } = useQuery<QuotationRequest[]>({
     queryKey: ['/api/quotation-requests'],
   });
+
+  const { data: tasks = [] } = useQuery<Task[]>({
+    queryKey: ['/api/tasks'],
+  });
+
+  // Calculate due date statistics
+  const today = new Date();
+  const tomorrow = addDays(today, 1);
+  const nextWeek = addDays(today, 7);
+  
+  const getAllItemsWithDueDates = () => {
+    const items = [];
+    
+    // Add work orders with due dates
+    workOrders.forEach(wo => {
+      if (wo.dueDate) {
+        items.push({
+          id: wo.id,
+          title: `Work Order: ${wo.customerName}`,
+          type: 'work-order',
+          dueDate: new Date(wo.dueDate),
+          status: wo.status,
+          priority: 'medium'
+        });
+      }
+    });
+    
+    // Add tickets with due dates
+    tickets.forEach(ticket => {
+      if (ticket.dueDate) {
+        items.push({
+          id: ticket.id,
+          title: `Ticket: ${ticket.title}`,
+          type: 'ticket',
+          dueDate: new Date(ticket.dueDate),
+          status: ticket.status,
+          priority: ticket.priority
+        });
+      }
+    });
+    
+    // Add tasks with due dates
+    tasks.forEach(task => {
+      if (task.dueDate) {
+        items.push({
+          id: task.id,
+          title: `Task: ${task.title}`,
+          type: 'task',
+          dueDate: new Date(task.dueDate),
+          status: task.status,
+          priority: task.priority
+        });
+      }
+    });
+    
+    // Add customer inquiries with due dates
+    customerInquiries.forEach(inquiry => {
+      if (inquiry.dueDate) {
+        items.push({
+          id: inquiry.id,
+          title: `Inquiry: ${inquiry.customerName}`,
+          type: 'inquiry',
+          dueDate: new Date(inquiry.dueDate),
+          status: inquiry.status,
+          priority: 'medium'
+        });
+      }
+    });
+    
+    // Add quotation requests with due dates
+    quotationRequests.forEach(quote => {
+      if (quote.dueDate) {
+        items.push({
+          id: quote.id,
+          title: `Quote: ${quote.customerName}`,
+          type: 'quote',
+          dueDate: new Date(quote.dueDate),
+          status: quote.status,
+          priority: quote.urgency
+        });
+      }
+    });
+    
+    return items.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  };
+
+  const allItems = getAllItemsWithDueDates();
+  const overdueItems = allItems.filter(item => isBefore(item.dueDate, today));
+  const dueTodayItems = allItems.filter(item => 
+    format(item.dueDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+  );
+  const dueTomorrowItems = allItems.filter(item => 
+    format(item.dueDate, 'yyyy-MM-dd') === format(tomorrow, 'yyyy-MM-dd')
+  );
+  const dueThisWeekItems = allItems.filter(item => 
+    isAfter(item.dueDate, today) && isBefore(item.dueDate, nextWeek)
+  );
+
+  // Daily motivation messages
+  const motivationMessages = [
+    "Excellence is never an accident. It is always the result of high intention, sincere effort, and intelligent execution.",
+    "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+    "Quality is not an act, it is a habit. Make every customer interaction count today!",
+    "Innovation distinguishes between a leader and a follower. Lead with technology solutions.",
+    "Your customers don't just buy products, they buy better versions of themselves.",
+    "Today's exceptional service becomes tomorrow's loyal customer.",
+    "Every problem solved today makes tomorrow's challenges easier to handle.",
+    "Technology empowers, but relationships drive business forward.",
+    "Great things happen when preparation meets opportunity. Be ready!",
+    "Customer satisfaction is not a destination, it's a journey we take every day."
+  ];
+  
+  const getTodaysMotivation = () => {
+    const today = new Date();
+    const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+    return motivationMessages[dayOfYear % motivationMessages.length];
+  };
 
   // Calculate statistics
   const workOrderStats = {
@@ -102,6 +224,64 @@ export default function Dashboard() {
           <p className="text-gray-600">Welcome to your business management dashboard. Monitor work orders, tickets, and customer activity.</p>
         </div>
 
+        {/* Daily Motivation & Due Dates Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Daily Motivation */}
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700">
+                <Lightbulb className="h-5 w-5" />
+                Daily Motivation
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-blue-800 italic leading-relaxed">{getTodaysMotivation()}</p>
+              <div className="flex items-center gap-2 mt-4 text-blue-600">
+                <Target className="h-4 w-4" />
+                <span className="text-sm font-medium">Let's make today exceptional!</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Due Dates Overview */}
+          <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-700">
+                <Calendar className="h-5 w-5" />
+                Due Dates Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Overdue</span>
+                  <Badge variant="destructive" data-testid="overdue-count">
+                    {overdueItems.length}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Due Today</span>
+                  <Badge variant="destructive" className="bg-orange-500" data-testid="due-today-count">
+                    {dueTodayItems.length}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Due Tomorrow</span>
+                  <Badge variant="outline" className="text-yellow-600 border-yellow-300" data-testid="due-tomorrow-count">
+                    {dueTomorrowItems.length}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Due This Week</span>
+                  <Badge variant="outline" className="text-blue-600 border-blue-300" data-testid="due-week-count">
+                    {dueThisWeekItems.length}
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -156,6 +336,65 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Due Items Section */}
+        {(overdueItems.length > 0 || dueTodayItems.length > 0) && (
+          <Card className="mb-8 border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="h-5 w-5" />
+                Items Requiring Attention
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {overdueItems.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="font-medium text-red-800 mb-2">Overdue Items</h4>
+                  <div className="space-y-2">
+                    {overdueItems.slice(0, 3).map((item) => (
+                      <div key={`${item.type}-${item.id}`} className="flex items-center justify-between p-2 bg-white rounded border border-red-200">
+                        <div>
+                          <span className="font-medium text-sm">{item.title}</span>
+                          <div className="text-xs text-gray-600">Due: {format(item.dueDate, 'MMM dd, yyyy')}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          {getPriorityBadge(item.priority)}
+                          <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {overdueItems.length > 3 && (
+                      <p className="text-sm text-red-600">+ {overdueItems.length - 3} more overdue items</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {dueTodayItems.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-orange-800 mb-2">Due Today</h4>
+                  <div className="space-y-2">
+                    {dueTodayItems.slice(0, 3).map((item) => (
+                      <div key={`${item.type}-${item.id}`} className="flex items-center justify-between p-2 bg-white rounded border border-orange-200">
+                        <div>
+                          <span className="font-medium text-sm">{item.title}</span>
+                          <div className="text-xs text-gray-600">Due: Today</div>
+                        </div>
+                        <div className="flex gap-2">
+                          {getPriorityBadge(item.priority)}
+                          <Badge variant="destructive" className="bg-orange-500 text-xs">Due Today</Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {dueTodayItems.length > 3 && (
+                      <p className="text-sm text-orange-600">+ {dueTodayItems.length - 3} more due today</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Work Orders */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

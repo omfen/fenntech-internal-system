@@ -202,6 +202,7 @@ export const customerInquiries = pgTable("customer_inquiries", {
   itemInquiry: varchar("item_inquiry").notNull(),
   status: varchar("status").default("new"), // new, contacted, follow_up, completed, closed
   assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  dueDate: timestamp("due_date"),
   statusHistory: jsonb("status_history").default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -221,6 +222,7 @@ export const quotationRequests = pgTable("quotation_requests", {
   urgency: varchar("urgency").notNull(),
   status: varchar("status").default("pending"), // pending, in_progress, quoted, accepted, declined, completed
   assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  dueDate: timestamp("due_date"),
   statusHistory: jsonb("status_history").default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -240,6 +242,7 @@ export const workOrders = pgTable("work_orders", {
   issue: text("issue").notNull(),
   status: varchar("status").default("received"), // received, in_progress, testing, ready_for_pickup, completed
   assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  dueDate: timestamp("due_date"),
   notes: text("notes").default(""),
   lastEmailSent: timestamp("last_email_sent"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -258,6 +261,7 @@ export const tickets = pgTable("tickets", {
   status: varchar("status").default("open"), // open, in_progress, resolved, closed
   assignedUserId: varchar("assigned_user_id").references(() => users.id),
   createdById: varchar("created_by_id").references(() => users.id),
+  dueDate: timestamp("due_date"),
   statusHistory: jsonb("status_history").default([]),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -286,25 +290,33 @@ export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = typeof callLogs.$inferInsert;
 
 // Validation schemas
-export const insertCustomerInquirySchema = createInsertSchema(customerInquiries).omit({
+export const insertCustomerInquirySchema = createInsertSchema(customerInquiries, {
+  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertQuotationRequestSchema = createInsertSchema(quotationRequests).omit({
+export const insertQuotationRequestSchema = createInsertSchema(quotationRequests, {
+  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertWorkOrderSchema = createInsertSchema(workOrders).omit({
+export const insertWorkOrderSchema = createInsertSchema(workOrders, {
+  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertTicketSchema = createInsertSchema(tickets).omit({
+export const insertTicketSchema = createInsertSchema(tickets, {
+  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
