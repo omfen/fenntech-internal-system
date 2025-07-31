@@ -1,4 +1,4 @@
-import { Calculator, BarChart3, DollarSign, Users, Phone, FileText, Wrench, Ticket, ChevronDown } from "lucide-react";
+import { Calculator, BarChart3, DollarSign, Users, Phone, FileText, Wrench, Ticket, ChevronDown, PhoneCall } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,28 +16,35 @@ export default function Navigation() {
   const isActive = (path: string) => location === path;
   const isPricingActive = location === "/intcomex-pricing" || location === "/amazon-pricing";
 
-  const navItems = [
-    { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
+  const dashboardItem = { path: "/", label: "Dashboard", icon: BarChart3 };
+  
+  const customerItems = [
     { path: "/customer-inquiries", label: "Customer Inquiries", icon: Phone },
     { path: "/quotation-requests", label: "Quotation Requests", icon: FileText },
     { path: "/work-orders", label: "Work Orders", icon: Wrench },
+    { path: "/call-logs", label: "Call Logs", icon: PhoneCall },
     { path: "/tickets", label: "Tickets", icon: Ticket },
   ];
 
-  // Add user management for administrators
-  if (user?.role === 'administrator') {
-    navItems.push({
-      path: "/users",
-      label: "User Management",
-      icon: Users,
-    });
-  }
+  const isCustomersActive = customerItems.some(item => location === item.path);
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex space-x-8">
+            {/* Dashboard */}
+            <Link href={dashboardItem.path}>
+              <Button
+                variant={isActive(dashboardItem.path) ? "default" : "ghost"}
+                className="flex items-center space-x-2"
+                data-testid="nav-dashboard"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">{dashboardItem.label}</span>
+              </Button>
+            </Link>
+
             {/* Pricing Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -67,22 +74,47 @@ export default function Navigation() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Other Navigation Items */}
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link key={item.path} href={item.path}>
-                  <Button
-                    variant={isActive(item.path) ? "default" : "ghost"}
-                    className="flex items-center space-x-2"
-                    data-testid={`nav-${item.path.slice(1) || 'home'}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </Button>
-                </Link>
-              );
-            })}
+            {/* Customers Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant={isCustomersActive ? "default" : "ghost"}
+                  className="flex items-center space-x-2"
+                  data-testid="nav-customers-dropdown"
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Customers</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {customerItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem key={item.path} asChild>
+                      <Link href={item.path}>
+                        <Icon className="h-4 w-4 mr-2" />
+                        {item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Admin User Management */}
+            {user?.role === 'administrator' && (
+              <Link href="/users">
+                <Button
+                  variant={isActive("/users") ? "default" : "ghost"}
+                  className="flex items-center space-x-2"
+                  data-testid="nav-user-management"
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">User Management</span>
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

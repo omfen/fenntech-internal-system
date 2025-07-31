@@ -1196,6 +1196,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Call Logs
+  app.get("/api/call-logs", authenticateToken, async (req, res) => {
+    try {
+      const callLogs = await storage.getCallLogs();
+      res.json(callLogs);
+    } catch (error) {
+      console.error("Error fetching call logs:", error);
+      res.status(500).json({ message: "Failed to fetch call logs" });
+    }
+  });
+
+  app.get("/api/call-logs/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const callLog = await storage.getCallLogById(id);
+      if (!callLog) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+      res.json(callLog);
+    } catch (error) {
+      console.error("Error fetching call log:", error);
+      res.status(500).json({ message: "Failed to fetch call log" });
+    }
+  });
+
+  app.post("/api/call-logs", authenticateToken, async (req, res) => {
+    try {
+      const callLogData = req.body;
+      const callLog = await storage.createCallLog(callLogData);
+      res.status(201).json(callLog);
+    } catch (error) {
+      console.error("Error creating call log:", error);
+      res.status(500).json({ message: "Failed to create call log" });
+    }
+  });
+
+  app.patch("/api/call-logs/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const callLog = await storage.updateCallLog(id, updates);
+      if (!callLog) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+      res.json(callLog);
+    } catch (error) {
+      console.error("Error updating call log:", error);
+      res.status(500).json({ message: "Failed to update call log" });
+    }
+  });
+
+  app.delete("/api/call-logs/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteCallLog(id);
+      if (!success) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting call log:", error);
+      res.status(500).json({ message: "Failed to delete call log" });
+    }
+  });
+
   // Helper function to send work order status emails
   async function sendWorkOrderStatusEmail(workOrder: any) {
     const statusMessages = {

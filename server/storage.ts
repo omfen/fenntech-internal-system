@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "./auth";
@@ -61,6 +61,13 @@ export interface IStorage {
   updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket | undefined>;
   deleteTicket(id: string): Promise<boolean>;
   getTicketsByAssignedUser(userId: string): Promise<Ticket[]>;
+
+  // Call Logs
+  getCallLogs(): Promise<CallLog[]>;
+  getCallLogById(id: string): Promise<CallLog | undefined>;
+  createCallLog(callLog: InsertCallLog): Promise<CallLog>;
+  updateCallLog(id: string, updates: Partial<CallLog>): Promise<CallLog | undefined>;
+  deleteCallLog(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -353,6 +360,34 @@ export class DatabaseStorage implements IStorage {
 
   async getTicketsByAssignedUser(userId: string): Promise<Ticket[]> {
     return await db.select().from(tickets).where(eq(tickets.assignedUserId, userId)).orderBy(tickets.createdAt);
+  }
+
+  // Call Logs operations
+  async getCallLogs(): Promise<CallLog[]> {
+    return await db.select().from(callLogs).orderBy(callLogs.createdAt);
+  }
+
+  async getCallLogById(id: string): Promise<CallLog | undefined> {
+    const [callLog] = await db.select().from(callLogs).where(eq(callLogs.id, id));
+    return callLog || undefined;
+  }
+
+  async createCallLog(callLog: InsertCallLog): Promise<CallLog> {
+    const [newCallLog] = await db.insert(callLogs).values(callLog).returning();
+    return newCallLog;
+  }
+
+  async updateCallLog(id: string, updates: Partial<CallLog>): Promise<CallLog | undefined> {
+    const [callLog] = await db.update(callLogs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(callLogs.id, id))
+      .returning();
+    return callLog || undefined;
+  }
+
+  async deleteCallLog(id: string): Promise<boolean> {
+    const result = await db.delete(callLogs).where(eq(callLogs.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Initialize with predefined categories if none exist

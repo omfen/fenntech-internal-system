@@ -9,7 +9,7 @@ This is a complete full-stack web application for inventory pricing and manageme
 
 Both systems generate email reports to management and maintain comprehensive pricing history. The application features a modern React frontend with Node.js/Express backend using PostgreSQL for persistent storage.
 
-**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.** **Latest: Customer product inquiries, quotation management, work orders with automated status email notifications, and tickets system fully implemented.**
+**Status: Fully functional and operational** - All Intcomex and Amazon pricing features implemented and tested with 162 JMD exchange rate. Amazon pricing uses manual entry approach for maximum accuracy. Mobile-responsive design completed with card-based layouts for all components. **New: Complete user authentication and management system implemented with role-based access control.** **Latest: Customer product inquiries, quotation management, work orders with automated status email notifications, tickets system, and call logs all fully implemented with status management and navigation reorganized under "Customers" section.**
 
 ## User Preferences
 
@@ -47,9 +47,11 @@ The application follows a monorepo structure with clear separation between clien
 - **Categories Table**: Stores product categories with markup percentages for PDF invoice items
 - **Pricing Sessions Table**: Stores complete PDF invoice calculations with exchange rates and item details
 - **Amazon Pricing Sessions Table**: Stores Amazon product calculations with URLs, cost formulas, and markup logic
-- **Customer Inquiries Table**: Stores customer product inquiries with name, telephone, and item details
-- **Quotation Requests Table**: Stores customer quotation requests with contact info, email, description, and urgency
-- **JSON Storage**: PDF items stored as JSONB for flexible pricing item structure
+- **Customer Inquiries Table**: Stores customer product inquiries with name, telephone, item details, status, and history tracking
+- **Quotation Requests Table**: Stores customer quotation requests with contact info, email, description, urgency, status, and history tracking
+- **Call Logs Table**: Stores customer call information with type, purpose, duration, outcome, and follow-up dates
+- **Status History Tables**: Track all status changes with timestamps and audit trails for customer inquiries, quotation requests, and tickets
+- **JSON Storage**: PDF items stored as JSONB for flexible pricing item structure and status history tracking
 
 ### Implemented Features
 
@@ -84,17 +86,20 @@ The application follows a monorepo structure with clear separation between clien
 22. **Automated Status Email Notifications**: Customers receive professional emails at each status change with detailed work order information and next steps
 23. **Work Order Notes System**: Technicians can add and update notes throughout the repair process
 24. **Tickets System**: Internal issue tracking with priority levels (low, medium, high, urgent) and user assignment capabilities
-25. **Full CRUD Operations**: Create, view, edit, and delete work orders, tickets, customer inquiries, and quotation requests
-26. **Mobile-Responsive Design**: Card-based layouts optimized for mobile viewing and interaction
+25. **Full CRUD Operations**: Create, view, edit, and delete work orders, tickets, customer inquiries, quotation requests, and call logs
+26. **Call Log System**: Track incoming and outgoing customer calls with purpose, duration, outcome, and follow-up dates
+27. **Status Management with History**: All customer interactions have status tracking with timestamps and audit trails
+28. **Navigation Reorganization**: Customer features grouped under unified "Customers" dropdown for better organization
+29. **Mobile-Responsive Design**: Card-based layouts optimized for mobile viewing and interaction
 
 #### Shared Features
-27. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)
-28. **Enhanced Email Systems**: Automated pricing reports to management and professional customer status update emails for work orders
-29. **Unified Navigation**: Navigation system with Dashboard first, Pricing dropdown (Intcomex/Amazon), and role-based menu items
-30. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
-31. **Professional UI**: Modern interface with system-specific branding and responsive design
-32. **Mobile-Friendly Price Trend Dashboard**: Comprehensive dashboard showing pricing trends, statistics, and recent sessions for both Intcomex and Amazon pricing with mobile-optimized card layouts
-33. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
+30. **Exchange Rate Management**: Updated to 162 JMD per USD (manual updates supported)
+31. **Enhanced Email Systems**: Automated pricing reports to management and professional customer status update emails for work orders
+32. **Unified Navigation**: Navigation system with Dashboard first, Pricing dropdown (Intcomex/Amazon), Customers dropdown (Inquiries/Quotes/Work Orders/Call Logs/Tickets), and role-based menu items
+33. **Mobile-Responsive Design**: Fully responsive interface with mobile-friendly card layouts, collapsible sidebar, and optimized forms for all screen sizes
+34. **Professional UI**: Modern interface with system-specific branding and responsive design
+35. **Mobile-Friendly Price Trend Dashboard**: Comprehensive dashboard showing pricing trends, statistics, and recent sessions for both Intcomex and Amazon pricing with mobile-optimized card layouts
+36. **Persistent Storage**: PostgreSQL database with automatic schema migration and data persistence
 
 ## Data Flow
 

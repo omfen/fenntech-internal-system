@@ -28,7 +28,7 @@ export function RegisterForm() {
   const onSubmit = async (data: InsertUser) => {
     try {
       // Set default role as 'user' for all new registrations
-      const userData = { ...data, role: "user" };
+      const userData = { ...data, role: "user" as const };
       await register(userData);
       toast({
         title: "Registration successful",
