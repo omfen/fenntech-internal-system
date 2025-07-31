@@ -120,6 +120,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/pricing-sessions/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedSession = insertPricingSessionSchema.parse(req.body);
+      const session = await storage.updatePricingSession(id, validatedSession);
+      if (!session) {
+        return res.status(404).json({ message: "Pricing session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      console.error('Error updating pricing session:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid pricing session data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update pricing session" });
+      }
+    }
+  });
+
   // User management routes (Admin only)
   app.get("/api/users", authenticateToken, requireAdmin, async (req, res) => {
     try {

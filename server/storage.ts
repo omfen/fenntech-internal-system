@@ -354,6 +354,15 @@ export class DatabaseStorage implements IStorage {
     return session;
   }
 
+  async updatePricingSession(id: string, updateData: Partial<InsertPricingSession>): Promise<PricingSession | undefined> {
+    const [session] = await db
+      .update(pricingSessions)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(pricingSessions.id, id))
+      .returning();
+    return session || undefined;
+  }
+
   async updatePricingSessionEmailSent(id: string): Promise<void> {
     await db
       .update(pricingSessions)

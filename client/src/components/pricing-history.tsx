@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,16 +10,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Download, Eye, Send, FileText, Calculator } from "lucide-react";
-import type { PricingSession } from "@shared/schema";
+import { Download, Eye, Send, FileText, Calculator, Edit } from "lucide-react";
+import type { PricingSession, Category } from "@shared/schema";
+
+// Zod schemas for validation
+const intcomexEditSchema = z.object({
+  pdfName: z.string().min(1, "PDF name is required"),
+  totalItemsUsd: z.number().min(0.01, "Total must be greater than 0"),
+  gctAmount: z.number().min(0, "GCT amount must be positive"),
+  finalTotalJmd: z.number().min(0.01, "Final total must be greater than 0"),
+  exchangeRate: z.number().min(1, "Exchange rate must be valid"),
+  roundingOption: z.enum(['none', 'nearest_5', 'nearest_10', 'nearest_50', 'nearest_100']),
+  notes: z.string().optional(),
+});
+
+type IntcomexEditForm = z.infer<typeof intcomexEditSchema>;
 
 export default function PricingHistory() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedSession, setSelectedSession] = useState<PricingSession | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [emailForm, setEmailForm] = useState({
     recipient: '',
     subject: '',
@@ -26,6 +46,52 @@ export default function PricingHistory() {
   const { data: sessions = [], isLoading } = useQuery<PricingSession[]>({
     queryKey: ["/api/pricing-sessions"],
   });
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  // Edit form for Intcomex sessions
+  const editForm = useForm<IntcomexEditForm>({
+    resolver: zodResolver(intcomexEditSchema),
+    defaultValues: {
+      pdfName: '',
+      totalItemsUsd: 0,
+      gctAmount: 0,
+      finalTotalJmd: 0,
+      exchangeRate: 162,
+      roundingOption: 'none',
+      notes: '',
+    },
+  });
+
+  // Watch form values for real-time calculations
+  const totalItemsUsd = editForm.watch('totalItemsUsd') || 0;
+  const exchangeRate = editForm.watch('exchangeRate') || 162;
+  const roundingOption = editForm.watch('roundingOption') || 'none';
+
+  // Real-time calculations
+  const totalJmd = totalItemsUsd * exchangeRate;
+  const gctAmount = totalJmd * 0.15; // 15% GCT
+  const beforeRounding = totalJmd + gctAmount;
+  
+  const applyRounding = (amount: number, option: string) => {
+    switch (option) {
+      case 'nearest_5': return Math.round(amount / 5) * 5;
+      case 'nearest_10': return Math.round(amount / 10) * 10;
+      case 'nearest_50': return Math.round(amount / 50) * 50;
+      case 'nearest_100': return Math.round(amount / 100) * 100;
+      default: return amount;
+    }
+  };
+
+  const finalTotalJmd = applyRounding(beforeRounding, roundingOption);
+
+  // Update form when calculations change
+  useEffect(() => {
+    editForm.setValue('gctAmount', gctAmount);
+    editForm.setValue('finalTotalJmd', finalTotalJmd);
+  }, [gctAmount, finalTotalJmd, editForm]);
 
   // Download PDF mutation
   const downloadMutation = useMutation({
@@ -57,6 +123,39 @@ export default function PricingHistory() {
     },
   });
 
+  // Update pricing session mutation
+  const updateSessionMutation = useMutation({
+    mutationFn: async ({ sessionId, data }: { sessionId: string; data: IntcomexEditForm }) => {
+      const sessionData = {
+        pdfName: data.pdfName,
+        totalItemsUsd: data.totalItemsUsd.toString(),
+        gctAmount: data.gctAmount.toString(),
+        finalTotalJmd: data.finalTotalJmd.toString(),
+        exchangeRate: data.exchangeRate.toString(),
+        roundingOption: data.roundingOption,
+        notes: data.notes || '',
+      };
+      const response = await apiRequest('PUT', `/api/pricing-sessions/${sessionId}`, sessionData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pricing-sessions'] });
+      toast({
+        title: "Session Updated",
+        description: "Intcomex pricing session updated successfully",
+      });
+      setShowEditDialog(false);
+      setSelectedSession(null);
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update Intcomex pricing session",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Email PDF mutation
   const emailMutation = useMutation({
     mutationFn: async ({ sessionId, data }: { sessionId: string; data: any }) => {
@@ -83,6 +182,18 @@ export default function PricingHistory() {
   const handleView = (session: PricingSession) => {
     setSelectedSession(session);
     setShowViewDialog(true);
+  };
+
+  const handleEdit = (session: PricingSession) => {
+    setSelectedSession(session);
+    editForm.setValue('pdfName', session.pdfName);
+    editForm.setValue('totalItemsUsd', parseFloat(session.totalItemsUsd));
+    editForm.setValue('gctAmount', parseFloat(session.gctAmount));
+    editForm.setValue('finalTotalJmd', parseFloat(session.finalTotalJmd));
+    editForm.setValue('exchangeRate', parseFloat(session.exchangeRate));
+    editForm.setValue('roundingOption', session.roundingOption as any);
+    editForm.setValue('notes', session.notes || '');
+    setShowEditDialog(true);
   };
 
   const handleDownload = (sessionId: string) => {
@@ -224,6 +335,15 @@ export default function PricingHistory() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="text-green-600 hover:text-green-700"
+                            onClick={() => handleEdit(session)}
+                            data-testid={`button-edit-${session.id}`}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-gray-500 hover:text-gray-700"
                             onClick={() => handleDownload(session.id)}
                             disabled={downloadMutation.isPending}
@@ -305,6 +425,15 @@ export default function PricingHistory() {
                               data-testid={`button-view-mobile-${session.id}`}
                             >
                               <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-green-600 hover:text-green-700 p-1"
+                              onClick={() => handleEdit(session)}
+                              data-testid={`button-edit-mobile-${session.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -472,6 +601,152 @@ export default function PricingHistory() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Session Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Edit className="h-5 w-5" />
+              <span>Edit Intcomex Pricing Session</span>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSession && (
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit((data) => updateSessionMutation.mutate({ sessionId: selectedSession.id, data }))} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="pdfName"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>PDF Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter PDF name" data-testid="input-edit-pdf-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="totalItemsUsd"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total Items (USD)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            data-testid="input-edit-total-usd"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="exchangeRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Exchange Rate</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 162)}
+                            data-testid="input-edit-exchange-rate"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="roundingOption"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Rounding Option</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-edit-rounding">
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select rounding option" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">No Rounding</SelectItem>
+                            <SelectItem value="nearest_5">Round to Nearest $5</SelectItem>
+                            <SelectItem value="nearest_10">Round to Nearest $10</SelectItem>
+                            <SelectItem value="nearest_50">Round to Nearest $50</SelectItem>
+                            <SelectItem value="nearest_100">Round to Nearest $100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Real-time Calculations Display */}
+                {totalItemsUsd > 0 && (
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
+                    <h4 className="font-semibold text-sm">Updated Calculations:</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>Total (JMD): <strong>${totalJmd.toLocaleString()}</strong></div>
+                      <div>GCT (15%): <strong>${gctAmount.toLocaleString()}</strong></div>
+                      <div>Before Rounding: <strong>${beforeRounding.toLocaleString()}</strong></div>
+                      <div className="text-green-600 font-semibold">Final Total: <strong>${finalTotalJmd.toLocaleString()} JMD</strong></div>
+                    </div>
+                  </div>
+                )}
+
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Add any notes about this pricing session..."
+                          {...field}
+                          data-testid="textarea-edit-notes"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={updateSessionMutation.isPending}
+                    className="flex-1"
+                    data-testid="button-save-edit"
+                  >
+                    {updateSessionMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowEditDialog(false)}
+                    className="flex-1"
+                    data-testid="button-cancel-edit"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
