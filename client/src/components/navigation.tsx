@@ -14,7 +14,7 @@ export default function Navigation() {
   const { user } = useAuth();
 
   const isActive = (path: string) => location === path;
-  const isPricingActive = location === "/" || location === "/amazon-pricing";
+  const isPricingActive = location === "/intcomex-pricing" || location === "/amazon-pricing";
 
   const navItems = [
     { path: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -53,7 +53,7 @@ export default function Navigation() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem asChild>
-                  <Link href="/">
+                  <Link href="/intcomex-pricing">
                     <Calculator className="h-4 w-4 mr-2" />
                     Intcomex Pricing
                   </Link>

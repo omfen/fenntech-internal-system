@@ -35,7 +35,8 @@ function AuthenticatedRouter() {
 
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={Dashboard} />
+      <Route path="/intcomex-pricing" component={Home} />
       <Route path="/amazon-pricing" component={AmazonPricingPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/users" component={UserManagement} />
