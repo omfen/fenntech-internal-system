@@ -59,7 +59,8 @@ export default function WorkOrdersPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertWorkOrder) => {
-      return await apiRequest("/api/work-orders", "POST", data);
+      const response = await apiRequest("POST", "/api/work-orders", data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/work-orders"] });
@@ -81,7 +82,8 @@ export default function WorkOrdersPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, sendEmail }: { id: string; data: Partial<WorkOrder>; sendEmail?: boolean }) => {
-      return await apiRequest(`/api/work-orders/${id}`, "PATCH", { ...data, sendStatusEmail: sendEmail });
+      const response = await apiRequest("PATCH", `/api/work-orders/${id}`, { ...data, sendStatusEmail: sendEmail });
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/work-orders"] });
@@ -103,7 +105,8 @@ export default function WorkOrdersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/work-orders/${id}`, "DELETE");
+      const response = await apiRequest("DELETE", `/api/work-orders/${id}`);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/work-orders"] });
