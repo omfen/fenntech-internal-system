@@ -227,7 +227,7 @@ export default function TicketsPage() {
   };
 
   const getUserName = (userId: string | null) => {
-    if (!userId) return "Unassigned";
+    if (!userId || userId === "unassigned") return "Unassigned";
     const user = users.find((u: any) => u.id === userId);
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User";
   };
@@ -385,7 +385,7 @@ export default function TicketsPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
                             {users.map((user: any) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.firstName} {user.lastName}

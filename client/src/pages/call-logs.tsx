@@ -237,7 +237,7 @@ export default function CallLogsPage() {
   };
 
   const getUserName = (userId?: string) => {
-    if (!userId) return "Unassigned";
+    if (!userId || userId === "unassigned") return "Unassigned";
     const user = users.find(u => u.id === userId);
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User";
   };
@@ -457,7 +457,7 @@ export default function CallLogsPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Unassigned</SelectItem>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
                             {users.map((user) => (
                               <SelectItem key={user.id} value={user.id}>
                                 {user.firstName} {user.lastName}
