@@ -925,6 +925,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/amazon-pricing-sessions/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedSession = insertAmazonPricingSessionSchema.parse(req.body);
+      const session = await storage.updateAmazonPricingSession(id, validatedSession);
+      if (!session) {
+        return res.status(404).json({ message: "Amazon pricing session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      console.error('Error updating Amazon pricing session:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid Amazon pricing session data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update Amazon pricing session" });
+      }
+    }
+  });
+
   // Amazon URL validation and price extraction
   app.post("/api/extract-amazon-price", async (req, res) => {
     try {

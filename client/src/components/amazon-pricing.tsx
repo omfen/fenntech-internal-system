@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, ExternalLink, Calculator, Mail, History, DollarSign, Eye, Download, Send, FileText } from 'lucide-react';
+import { AlertCircle, ExternalLink, Calculator, Mail, History, DollarSign, Eye, Download, Send, FileText, Edit } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
@@ -49,6 +49,7 @@ export function AmazonPricing() {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [amazonEmailForm, setAmazonEmailForm] = useState({
     recipient: '',
     subject: '',
@@ -133,14 +134,35 @@ export function AmazonPricing() {
     },
   });
 
+  // Edit form for existing sessions
+  const editForm = useForm<AmazonPricingForm>({
+    resolver: zodResolver(amazonPricingSchema),
+    defaultValues: {
+      amazonUrl: '',
+      productName: '',
+      costUsd: 0,
+      markupPercentage: 80,
+      notes: '',
+    },
+  });
+
   // Watch form values for real-time calculations
   const costUsd = pricingForm.watch('costUsd') || 0;
   const markupPercentage = pricingForm.watch('markupPercentage') || 80;
+
+  // Watch edit form values for real-time calculations
+  const editCostUsd = editForm.watch('costUsd') || 0;
+  const editMarkupPercentage = editForm.watch('markupPercentage') || 80;
 
   // Calculations
   const amazonPrice = costUsd * 1.07; // Cost + 7%
   const sellingPriceUsd = amazonPrice * (1 + markupPercentage / 100);
   const sellingPriceJmd = sellingPriceUsd * exchangeRate;
+
+  // Edit calculations
+  const editAmazonPrice = editCostUsd * 1.07;
+  const editSellingPriceUsd = editAmazonPrice * (1 + editMarkupPercentage / 100);
+  const editSellingPriceJmd = editSellingPriceUsd * exchangeRate;
 
   // Update markup when cost changes
   const handleCostChange = (value: number) => {
@@ -241,6 +263,41 @@ export function AmazonPricing() {
     },
   });
 
+  // Update session mutation for editing
+  const updateSessionMutation = useMutation({
+    mutationFn: async ({ sessionId, data }: { sessionId: string; data: AmazonPricingForm }) => {
+      const sessionData = {
+        amazonUrl: data.amazonUrl,
+        productName: data.productName,
+        costUsd: data.costUsd.toString(),
+        amazonPrice: editAmazonPrice.toString(),
+        markupPercentage: data.markupPercentage.toString(),
+        sellingPriceUsd: editSellingPriceUsd.toString(),
+        sellingPriceJmd: editSellingPriceJmd.toString(),
+        exchangeRate: exchangeRate.toString(),
+        notes: data.notes || '',
+      };
+      const response = await apiRequest('PUT', `/api/amazon-pricing-sessions/${sessionId}`, sessionData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/amazon-pricing-sessions'] });
+      toast({
+        title: "Session Updated",
+        description: "Amazon pricing session updated successfully",
+      });
+      setShowEditDialog(false);
+      setSelectedSession(null);
+    },
+    onError: () => {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update Amazon pricing session",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Download mutation for Amazon sessions
   const downloadAmazonMutation = useMutation({
     mutationFn: async (sessionId: string) => {
@@ -297,6 +354,16 @@ export function AmazonPricing() {
   const handleAmazonView = (session: AmazonPricingSession) => {
     setSelectedSession(session);
     setShowViewDialog(true);
+  };
+
+  const handleAmazonEdit = (session: AmazonPricingSession) => {
+    setSelectedSession(session);
+    editForm.setValue('amazonUrl', session.amazonUrl);
+    editForm.setValue('productName', session.productName);
+    editForm.setValue('costUsd', parseFloat(session.costUsd));
+    editForm.setValue('markupPercentage', parseFloat(session.markupPercentage));
+    editForm.setValue('notes', session.notes || '');
+    setShowEditDialog(true);
   };
 
   const handleAmazonDownload = (sessionId: string) => {
@@ -663,6 +730,15 @@ export function AmazonPricing() {
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => handleAmazonEdit(session)}
+                          className="p-1 h-8 w-8"
+                          data-testid={`button-edit-${session.id}`}
+                        >
+                          <Edit className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => handleAmazonDownload(session.id)}
                           disabled={downloadAmazonMutation.isPending}
                           className="p-1 h-8 w-8"
@@ -893,6 +969,142 @@ export function AmazonPricing() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Session Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Edit className="h-5 w-5" />
+              <span>Edit Amazon Pricing Session</span>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSession && (
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit((data) => updateSessionMutation.mutate({ sessionId: selectedSession.id, data }))} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="amazonUrl"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Amazon URL</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="https://amazon.com/..." data-testid="input-edit-amazon-url" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="productName"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Product Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter product name" data-testid="input-edit-product-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="costUsd"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cost (USD)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            data-testid="input-edit-cost-usd"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="markupPercentage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Markup Percentage</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="500"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            data-testid="input-edit-markup"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Real-time Calculations Display */}
+                {editCostUsd > 0 && (
+                  <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-2">
+                    <h4 className="font-semibold text-sm">Updated Calculations:</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>Amazon Price (Cost + 7%): <strong>${editAmazonPrice.toFixed(2)} USD</strong></div>
+                      <div>Selling Price (USD): <strong>${editSellingPriceUsd.toFixed(2)} USD</strong></div>
+                      <div>Exchange Rate: <strong>1 USD = {exchangeRate.toFixed(2)} JMD</strong></div>
+                      <div className="text-green-600 font-semibold">Final Price: <strong>${editSellingPriceJmd.toLocaleString()} JMD</strong></div>
+                    </div>
+                  </div>
+                )}
+
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Add any notes about this pricing..."
+                          {...field}
+                          data-testid="textarea-edit-notes"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={updateSessionMutation.isPending}
+                    className="flex-1"
+                    data-testid="button-save-edit"
+                  >
+                    {updateSessionMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowEditDialog(false)}
+                    className="flex-1"
+                    data-testid="button-cancel-edit"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
