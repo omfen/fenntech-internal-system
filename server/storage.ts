@@ -10,6 +10,9 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
+  updateUserRole(id: string, role: 'user' | 'administrator'): Promise<User | undefined>;
+  updateUserStatus(id: string, isActive: boolean): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
 
   // Categories
   getCategories(): Promise<Category[]>;
@@ -69,6 +72,35 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users).orderBy(users.createdAt);
+  }
+
+  async updateUserRole(id: string, role: 'user' | 'administrator'): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        role,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  async updateUserStatus(id: string, isActive: boolean): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        isActive,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount > 0;
   }
 
   async getCategories(): Promise<Category[]> {

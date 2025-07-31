@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/home";
 import AmazonPricingPage from "@/pages/amazon-pricing";
 import Dashboard from "@/pages/dashboard";
+import UserManagement from "@/pages/user-management";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
@@ -33,6 +34,7 @@ function AuthenticatedRouter() {
       <Route path="/" component={Home} />
       <Route path="/amazon-pricing" component={AmazonPricingPage} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/users" component={UserManagement} />
       <Route component={NotFound} />
     </Switch>
   );

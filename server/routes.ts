@@ -117,6 +117,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User management routes (Admin only)
+  app.get("/api/users", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords from response
+      const safeUsers = users.map(({ password, ...user }) => user);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Get users error:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.put("/api/users/:id/role", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { role } = req.body;
+      const userId = req.params.id;
+      
+      if (!role || !['user', 'administrator'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be 'user' or 'administrator'" });
+      }
+
+      // Prevent admin from demoting themselves
+      if (userId === req.user!.id && role !== 'administrator') {
+        return res.status(400).json({ message: "Cannot demote yourself from administrator role" });
+      }
+
+      const updatedUser = await storage.updateUserRole(userId, role);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Update user role error:", error);
+      res.status(500).json({ message: "Failed to update user role" });
+    }
+  });
+
+  app.put("/api/users/:id/status", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { isActive } = req.body;
+      const userId = req.params.id;
+      
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: "isActive must be a boolean value" });
+      }
+
+      // Prevent admin from deactivating themselves
+      if (userId === req.user!.id && !isActive) {
+        return res.status(400).json({ message: "Cannot deactivate your own account" });
+      }
+
+      const updatedUser = await storage.updateUserStatus(userId, isActive);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
+    } catch (error) {
+      console.error("Update user status error:", error);
+      res.status(500).json({ message: "Failed to update user status" });
+    }
+  });
+
+  app.delete("/api/users/:id", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.params.id;
+
+      // Prevent admin from deleting themselves
+      if (userId === req.user!.id) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      const deleted = await storage.deleteUser(userId);
+      if (!deleted) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // PDF upload and text extraction
   app.post("/api/extract-pdf", authenticateToken, upload.single('pdf'), async (req, res) => {
     try {

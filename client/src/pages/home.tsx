@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import Header from "@/components/header";
+import Navigation from "@/components/navigation";
 import Sidebar from "@/components/sidebar";
 import PricingCalculator from "@/components/pricing-calculator";
 import PricingHistory from "@/components/pricing-history";
