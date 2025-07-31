@@ -1,11 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { authenticateToken, requireAdmin } from "./auth";
+import authRoutes from "./auth-routes";
 import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, type EmailReport } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
 import nodemailer from "nodemailer";
 import { AmazonProductAPI } from "./amazon-api";
+import type { AuthenticatedRequest } from "./auth";
 // pdf-parse will be dynamically imported when needed
 
 // Configure multer for file uploads
@@ -21,8 +24,12 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth routes
+  app.use("/api/auth", authRoutes);
+  // Protected routes - require authentication
+  
   // Categories routes
-  app.get("/api/categories", async (req, res) => {
+  app.get("/api/categories", authenticateToken, async (req, res) => {
     try {
       const categories = await storage.getCategories();
       res.json(categories);
@@ -31,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/categories", async (req, res) => {
+  app.post("/api/categories", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const categoryData = insertCategorySchema.parse(req.body);
       const category = await storage.createCategory(categoryData);
@@ -45,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/categories/:id", async (req, res) => {
+  app.put("/api/categories/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const categoryData = updateCategorySchema.parse({ ...req.body, id: req.params.id });
       const category = await storage.updateCategory(categoryData);
@@ -62,7 +69,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/categories/:id", async (req, res) => {
+  app.delete("/api/categories/:id", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const deleted = await storage.deleteCategory(req.params.id);
       if (!deleted) {
@@ -75,7 +82,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Pricing sessions routes
-  app.get("/api/pricing-sessions", async (req, res) => {
+  app.get("/api/pricing-sessions", authenticateToken, async (req, res) => {
     try {
       const sessions = await storage.getPricingSessions();
       res.json(sessions);
@@ -84,7 +91,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/pricing-sessions/:id", async (req, res) => {
+  app.get("/api/pricing-sessions/:id", authenticateToken, async (req, res) => {
     try {
       const session = await storage.getPricingSessionById(req.params.id);
       if (!session) {
@@ -96,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/pricing-sessions", async (req, res) => {
+  app.post("/api/pricing-sessions", authenticateToken, async (req, res) => {
     try {
       const sessionData = insertPricingSessionSchema.parse(req.body);
       const session = await storage.createPricingSession(sessionData);
@@ -111,7 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PDF upload and text extraction
-  app.post("/api/extract-pdf", upload.single('pdf'), async (req, res) => {
+  app.post("/api/extract-pdf", authenticateToken, upload.single('pdf'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No PDF file uploaded" });

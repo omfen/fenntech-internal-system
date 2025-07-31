@@ -1,6 +1,16 @@
-import { Calculator, User } from "lucide-react";
+import { Calculator, User, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Header() {
+  const { user, logout } = useAuth();
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200" data-testid="header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,17 +26,36 @@ export default function Header() {
               <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Inventory Pricing & Management</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-gray-900" data-testid="user-name">
-                John Admin
-              </p>
-              <p className="text-xs text-gray-500">Administrator</p>
+          
+          {user && (
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-900" data-testid="user-name">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+              </div>
+              
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="w-7 h-7 sm:w-8 sm:h-8 bg-primary text-white rounded-full flex items-center justify-center hover:bg-primary/90"
+                    data-testid="user-menu"
+                  >
+                    <User className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={logout} data-testid="logout-button">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary text-white rounded-full flex items-center justify-center">
-              <User className="w-3 h-3 sm:w-4 sm:h-4" />
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </header>

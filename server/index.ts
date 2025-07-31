@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { createAdminUser } from "./init-admin";
 
 const app = express();
 app.use(express.json());
@@ -42,6 +43,9 @@ app.use((req, res, next) => {
   if ('initializeCategories' in storage) {
     await (storage as any).initializeCategories();
   }
+  
+  // Initialize admin user
+  await createAdminUser();
   
   const server = await registerRoutes(app);
 
