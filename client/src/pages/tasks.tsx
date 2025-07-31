@@ -17,6 +17,7 @@ import { type User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import Header from "@/components/header";
 import Navigation from "@/components/navigation";
 
 // Form interface that matches what react-hook-form expects
@@ -220,6 +221,7 @@ export default function Tasks() {
   if (isLoading) {
     return (
       <>
+        <Header />
         <Navigation />
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center min-h-[400px]">
@@ -232,6 +234,7 @@ export default function Tasks() {
 
   return (
     <>
+      <Header />
       <Navigation />
       <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">

@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import Header from "@/components/header";
 import Navigation from "@/components/navigation";
 import { Search, BookOpen, Users, Calculator, Phone, FileText, Wrench, Ticket, Settings, HelpCircle, ChevronRight, ExternalLink } from "lucide-react";
 
@@ -150,6 +151,7 @@ export default function HelpPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header />
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

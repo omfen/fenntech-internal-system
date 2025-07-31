@@ -46,6 +46,8 @@ import {
   Plus
 } from "lucide-react";
 import type { User } from "@shared/schema";
+import Header from "@/components/header";
+import Navigation from "@/components/navigation";
 
 interface CreateUserForm {
   email: string;
@@ -234,7 +236,10 @@ export default function UserManagementPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <Navigation />
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -482,6 +487,7 @@ export default function UserManagementPage() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }
