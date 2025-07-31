@@ -37,7 +37,9 @@ import { Phone, Mail, Package, Plus, Edit, Trash2, Calendar, UserIcon, AlertCirc
 import { format } from "date-fns";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
+import ViewOptions from "@/components/view-options";
 import type { CustomerInquiry, InsertCustomerInquiry } from "@shared/schema";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function CustomerInquiriesPage() {
   const { toast } = useToast();
@@ -48,6 +50,12 @@ export default function CustomerInquiriesPage() {
     telephoneNumber: "",
     itemInquiry: "",
   });
+
+  // View options state
+  const [view, setView] = useState<'cards' | 'list'>('cards');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const { data: inquiries = [], isLoading } = useQuery<CustomerInquiry[]>({
     queryKey: ["/api/customer-inquiries"],
@@ -238,6 +246,57 @@ export default function CustomerInquiriesPage() {
     closed: "bg-gray-100 text-gray-800",
   };
 
+  // Filter and sort inquiries
+  const filteredInquiries = inquiries
+    .filter(inquiry =>
+      inquiry.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inquiry.telephoneNumber.includes(searchTerm) ||
+      inquiry.itemInquiry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (inquiry.status || '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortBy) {
+        case 'customerName':
+          valueA = a.customerName.toLowerCase();
+          valueB = b.customerName.toLowerCase();
+          break;
+        case 'status':
+          valueA = a.status || '';
+          valueB = b.status || '';
+          break;
+        case 'createdAt':
+        default:
+          valueA = new Date(a.createdAt || '');
+          valueB = new Date(b.createdAt || '');
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+      } else {
+        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+      }
+    });
+
+  const sortOptions = [
+    { value: 'createdAt', label: 'Date Created' },
+    { value: 'customerName', label: 'Customer Name' },
+    { value: 'status', label: 'Status' },
+  ];
+
+  const handleExport = () => {
+    return filteredInquiries.map(inquiry => ({
+      customer_name: inquiry.customerName,
+      telephone: inquiry.telephoneNumber,
+      item_inquiry: inquiry.itemInquiry,
+      status: inquiry.status,
+      created_date: inquiry.createdAt ? format(new Date(inquiry.createdAt), 'yyyy-MM-dd HH:mm:ss') : '',
+      due_date: inquiry.dueDate ? format(new Date(inquiry.dueDate), 'yyyy-MM-dd') : '',
+    }));
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -345,8 +404,25 @@ export default function CustomerInquiriesPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-6">
-          {inquiries.map((inquiry) => (
+        {/* View Options */}
+        <ViewOptions
+          view={view}
+          onViewChange={setView}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search inquiries..."
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
+          sortOptions={sortOptions}
+          onExport={handleExport}
+          exportFilename="customer_inquiries"
+        />
+
+        {view === 'cards' ? (
+          <div className="grid gap-6">
+            {filteredInquiries.map((inquiry) => (
             <Card key={inquiry.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between space-y-4 sm:space-y-0">
@@ -442,8 +518,133 @@ export default function CustomerInquiriesPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Product Inquiry</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInquiries.map((inquiry) => (
+                      <TableRow key={inquiry.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center space-x-2">
+                            <UserIcon className="h-4 w-4 text-gray-500" />
+                            <span data-testid={`list-customer-${inquiry.id}`}>
+                              {inquiry.customerName}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Phone className="h-4 w-4 text-gray-500" />
+                            <span data-testid={`list-phone-${inquiry.id}`}>
+                              {inquiry.telephoneNumber}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="max-w-md">
+                          <p className="truncate" title={inquiry.itemInquiry} data-testid={`list-item-${inquiry.id}`}>
+                            {inquiry.itemInquiry}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[inquiry.status as keyof typeof statusColors]}>
+                            {inquiry.status === "follow-up" ? "Follow-up" : inquiry.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm">
+                              {inquiry.createdAt ? format(new Date(inquiry.createdAt), "MMM dd, yyyy") : "Unknown"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <Select onValueChange={(value) => handleStatusChange(inquiry.id, value)}>
+                              <SelectTrigger className="w-32" data-testid={`list-status-${inquiry.id}`}>
+                                <SelectValue placeholder="Change Status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="new">New</SelectItem>
+                                <SelectItem value="contacted">Contacted</SelectItem>
+                                <SelectItem value="follow-up">Follow-up</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="closed">Closed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(inquiry)}
+                              data-testid={`list-edit-${inquiry.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  data-testid={`list-delete-${inquiry.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Customer Inquiry</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this inquiry from {inquiry.customerName}?
+                                    This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(inquiry.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete Inquiry
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {filteredInquiries.length === 0 && inquiries.length > 0 && (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Phone className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Results Found</h3>
+              <p className="text-gray-600">
+                No inquiries match your search criteria. Try adjusting your search terms.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {inquiries.length === 0 && (
           <Card>
