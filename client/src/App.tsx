@@ -17,6 +17,10 @@ import Tasks from "@/pages/tasks";
 import HelpPage from "@/pages/help";
 import LoginPage from "@/pages/login";
 import NotFound from "@/pages/not-found";
+import Clients from "@/pages/clients";
+import CompanySettings from "@/pages/company-settings";
+import Quotations from "@/pages/quotations";
+import Invoices from "@/pages/invoices";
 
 function AuthenticatedRouter() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +54,10 @@ function AuthenticatedRouter() {
       <Route path="/tickets" component={Tickets} />
       <Route path="/tasks" component={Tasks} />
       <Route path="/help" component={HelpPage} />
+      <Route path="/clients" component={Clients} />
+      <Route path="/company-settings" component={CompanySettings} />
+      <Route path="/quotations" component={Quotations} />
+      <Route path="/invoices" component={Invoices} />
       <Route component={NotFound} />
     </Switch>
   );

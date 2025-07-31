@@ -1745,6 +1745,355 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Company Settings routes
+  app.get('/api/company-settings', authenticateToken, async (req, res) => {
+    try {
+      const settings = await storage.getCompanySettings();
+      res.json(settings);
+    } catch (error) {
+      console.error('Error fetching company settings:', error);
+      res.status(500).json({ error: 'Failed to fetch company settings' });
+    }
+  });
+
+  app.post('/api/company-settings', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const settings = await storage.createOrUpdateCompanySettings(req.body);
+      res.json(settings);
+    } catch (error) {
+      console.error('Error saving company settings:', error);
+      res.status(500).json({ error: 'Failed to save company settings' });
+    }
+  });
+
+  // Client routes
+  app.get('/api/clients', authenticateToken, async (req, res) => {
+    try {
+      const clients = await storage.getClients();
+      res.json(clients);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      res.status(500).json({ error: 'Failed to fetch clients' });
+    }
+  });
+
+  app.get('/api/clients/:id', authenticateToken, async (req, res) => {
+    try {
+      const client = await storage.getClient(req.params.id);
+      if (!client) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+      res.json(client);
+    } catch (error) {
+      console.error('Error fetching client:', error);
+      res.status(500).json({ error: 'Failed to fetch client' });
+    }
+  });
+
+  app.post('/api/clients', authenticateToken, async (req, res) => {
+    try {
+      const client = await storage.createClient(req.body);
+      
+      await storage.logEntityChange(
+        'client',
+        client.id,
+        'created',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Client created: ${client.name}`
+      );
+      
+      res.json(client);
+    } catch (error) {
+      console.error('Error creating client:', error);
+      res.status(500).json({ error: 'Failed to create client' });
+    }
+  });
+
+  app.put('/api/clients/:id', authenticateToken, async (req, res) => {
+    try {
+      const client = await storage.updateClient(req.params.id, req.body);
+      if (!client) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+      
+      await storage.logEntityChange(
+        'client',
+        client.id,
+        'updated',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Client updated: ${client.name}`
+      );
+      
+      res.json(client);
+    } catch (error) {
+      console.error('Error updating client:', error);
+      res.status(500).json({ error: 'Failed to update client' });
+    }
+  });
+
+  app.delete('/api/clients/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const client = await storage.getClient(req.params.id);
+      if (!client) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+      
+      const success = await storage.deleteClient(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+      
+      await storage.logEntityChange(
+        'client',
+        req.params.id,
+        'deleted',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Client deleted: ${client.name}`
+      );
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      res.status(500).json({ error: 'Failed to delete client' });
+    }
+  });
+
+  // Quotation routes
+  app.get('/api/quotations', authenticateToken, async (req, res) => {
+    try {
+      const quotations = await storage.getQuotations();
+      res.json(quotations);
+    } catch (error) {
+      console.error('Error fetching quotations:', error);
+      res.status(500).json({ error: 'Failed to fetch quotations' });
+    }
+  });
+
+  app.get('/api/quotations/:id', authenticateToken, async (req, res) => {
+    try {
+      const quotation = await storage.getQuotation(req.params.id);
+      if (!quotation) {
+        return res.status(404).json({ error: 'Quotation not found' });
+      }
+      res.json(quotation);
+    } catch (error) {
+      console.error('Error fetching quotation:', error);
+      res.status(500).json({ error: 'Failed to fetch quotation' });
+    }
+  });
+
+  app.post('/api/quotations', authenticateToken, async (req, res) => {
+    try {
+      const quoteNumber = await storage.generateQuoteNumber();
+      const quotationData = {
+        ...req.body,
+        quoteNumber,
+        createdById: req.user!.id,
+        createdByName: `${req.user!.firstName} ${req.user!.lastName}`,
+      };
+      
+      const quotation = await storage.createQuotation(quotationData);
+      
+      await storage.logEntityChange(
+        'quotation',
+        quotation.id,
+        'created',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Quotation created: ${quotation.quoteNumber}`
+      );
+      
+      res.json(quotation);
+    } catch (error) {
+      console.error('Error creating quotation:', error);
+      res.status(500).json({ error: 'Failed to create quotation' });
+    }
+  });
+
+  app.put('/api/quotations/:id', authenticateToken, async (req, res) => {
+    try {
+      const quotation = await storage.updateQuotation(req.params.id, req.body);
+      if (!quotation) {
+        return res.status(404).json({ error: 'Quotation not found' });
+      }
+      
+      await storage.logEntityChange(
+        'quotation',
+        quotation.id,
+        'updated',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Quotation updated: ${quotation.quoteNumber}`
+      );
+      
+      res.json(quotation);
+    } catch (error) {
+      console.error('Error updating quotation:', error);
+      res.status(500).json({ error: 'Failed to update quotation' });
+    }
+  });
+
+  app.delete('/api/quotations/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const quotation = await storage.getQuotation(req.params.id);
+      if (!quotation) {
+        return res.status(404).json({ error: 'Quotation not found' });
+      }
+      
+      const success = await storage.deleteQuotation(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: 'Quotation not found' });
+      }
+      
+      await storage.logEntityChange(
+        'quotation',
+        req.params.id,
+        'deleted',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Quotation deleted: ${quotation.quoteNumber}`
+      );
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting quotation:', error);
+      res.status(500).json({ error: 'Failed to delete quotation' });
+    }
+  });
+
+  // Invoice routes
+  app.get('/api/invoices', authenticateToken, async (req, res) => {
+    try {
+      const invoices = await storage.getInvoices();
+      res.json(invoices);
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+      res.status(500).json({ error: 'Failed to fetch invoices' });
+    }
+  });
+
+  app.get('/api/invoices/:id', authenticateToken, async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+      res.json(invoice);
+    } catch (error) {
+      console.error('Error fetching invoice:', error);
+      res.status(500).json({ error: 'Failed to fetch invoice' });
+    }
+  });
+
+  app.post('/api/invoices', authenticateToken, async (req, res) => {
+    try {
+      const invoiceNumber = await storage.generateInvoiceNumber();
+      const invoiceData = {
+        ...req.body,
+        invoiceNumber,
+        createdById: req.user!.id,
+        createdByName: `${req.user!.firstName} ${req.user!.lastName}`,
+      };
+      
+      const invoice = await storage.createInvoice(invoiceData);
+      
+      await storage.logEntityChange(
+        'invoice',
+        invoice.id,
+        'created',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Invoice created: ${invoice.invoiceNumber}`
+      );
+      
+      res.json(invoice);
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      res.status(500).json({ error: 'Failed to create invoice' });
+    }
+  });
+
+  app.put('/api/invoices/:id', authenticateToken, async (req, res) => {
+    try {
+      const invoice = await storage.updateInvoice(req.params.id, req.body);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+      
+      await storage.logEntityChange(
+        'invoice',
+        invoice.id,
+        'updated',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Invoice updated: ${invoice.invoiceNumber}`
+      );
+      
+      res.json(invoice);
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      res.status(500).json({ error: 'Failed to update invoice' });
+    }
+  });
+
+  app.delete('/api/invoices/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+      
+      const success = await storage.deleteInvoice(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+      
+      await storage.logEntityChange(
+        'invoice',
+        req.params.id,
+        'deleted',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Invoice deleted: ${invoice.invoiceNumber}`
+      );
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      res.status(500).json({ error: 'Failed to delete invoice' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,4 +1,4 @@
-import { Calculator, BarChart3, DollarSign, Users, Phone, FileText, Wrench, Ticket, ChevronDown, PhoneCall, HelpCircle, CheckSquare } from "lucide-react";
+import { Calculator, BarChart3, DollarSign, Users, Phone, FileText, Wrench, Ticket, ChevronDown, PhoneCall, HelpCircle, CheckSquare, Receipt, Settings } from "lucide-react";
 import FennTechLogo from "@assets/FennTech ONLY_1753941339432.png";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -119,6 +119,49 @@ export default function Navigation() {
                     </DropdownMenuItem>
                   );
                 })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Transactions Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex items-center space-x-2"
+                  data-testid="nav-transactions-dropdown"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  <span className="hidden sm:inline">Transactions</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem asChild>
+                  <Link href="/clients">
+                    <Users className="h-4 w-4 mr-2" />
+                    Clients
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/quotations">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Quotations
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/invoices">
+                    <Receipt className="h-4 w-4 mr-2" />
+                    Invoices
+                  </Link>
+                </DropdownMenuItem>
+                {user?.role === 'administrator' && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/company-settings">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Company Settings
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 

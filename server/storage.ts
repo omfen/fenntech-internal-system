@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, type ChangeLog, type InsertChangeLog, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs, changeLog } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, type ChangeLog, type InsertChangeLog, type CompanySettings, type InsertCompanySettings, type Client, type InsertClient, type Quotation, type InsertQuotation, type Invoice, type InsertInvoice, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs, changeLog, companySettings, clients, quotations, invoices } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 import { hashPassword } from "./auth";
@@ -86,6 +86,33 @@ export interface IStorage {
   adminCreateUser(userData: InsertUser & { requiresAdminApproval?: boolean }): Promise<User>;
   getUsersPendingApproval(): Promise<User[]>;
   approveUser(id: string): Promise<User | undefined>;
+
+  // Company settings operations
+  getCompanySettings(): Promise<CompanySettings | undefined>;
+  createOrUpdateCompanySettings(settings: InsertCompanySettings): Promise<CompanySettings>;
+
+  // Client operations
+  getClients(): Promise<Client[]>;
+  getClient(id: string): Promise<Client | undefined>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined>;
+  deleteClient(id: string): Promise<boolean>;
+
+  // Quotation operations
+  getQuotations(): Promise<Quotation[]>;
+  getQuotation(id: string): Promise<Quotation | undefined>;
+  createQuotation(quotation: InsertQuotation): Promise<Quotation>;
+  updateQuotation(id: string, quotation: Partial<InsertQuotation>): Promise<Quotation | undefined>;
+  deleteQuotation(id: string): Promise<boolean>;
+  generateQuoteNumber(): Promise<string>;
+
+  // Invoice operations
+  getInvoices(): Promise<Invoice[]>;
+  getInvoice(id: string): Promise<Invoice | undefined>;
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  updateInvoice(id: string, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: string): Promise<boolean>;
+  generateInvoiceNumber(): Promise<string>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -674,6 +701,127 @@ export class DatabaseStorage implements IStorage {
         await this.createCategory(cat);
       }
     }
+  }
+
+  // Company Settings methods
+  async getCompanySettings(): Promise<CompanySettings | undefined> {
+    const [settings] = await db.select().from(companySettings).limit(1);
+    return settings || undefined;
+  }
+
+  async createOrUpdateCompanySettings(settingsData: InsertCompanySettings): Promise<CompanySettings> {
+    const existing = await this.getCompanySettings();
+    
+    if (existing) {
+      const [updated] = await db
+        .update(companySettings)
+        .set({ ...settingsData, updatedAt: new Date() })
+        .where(eq(companySettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(companySettings).values(settingsData).returning();
+      return created;
+    }
+  }
+
+  // Client methods
+  async getClients(): Promise<Client[]> {
+    return await db.select().from(clients).orderBy(desc(clients.createdAt));
+  }
+
+  async getClient(id: string): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client || undefined;
+  }
+
+  async createClient(clientData: InsertClient): Promise<Client> {
+    const [client] = await db.insert(clients).values(clientData).returning();
+    return client;
+  }
+
+  async updateClient(id: string, clientData: Partial<InsertClient>): Promise<Client | undefined> {
+    const [updated] = await db
+      .update(clients)
+      .set({ ...clientData, updatedAt: new Date() })
+      .where(eq(clients.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteClient(id: string): Promise<boolean> {
+    const result = await db.delete(clients).where(eq(clients.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Quotation methods
+  async getQuotations(): Promise<Quotation[]> {
+    return await db.select().from(quotations).orderBy(desc(quotations.createdAt));
+  }
+
+  async getQuotation(id: string): Promise<Quotation | undefined> {
+    const [quotation] = await db.select().from(quotations).where(eq(quotations.id, id));
+    return quotation || undefined;
+  }
+
+  async createQuotation(quotationData: InsertQuotation): Promise<Quotation> {
+    const [quotation] = await db.insert(quotations).values(quotationData).returning();
+    return quotation;
+  }
+
+  async updateQuotation(id: string, quotationData: Partial<InsertQuotation>): Promise<Quotation | undefined> {
+    const [updated] = await db
+      .update(quotations)
+      .set({ ...quotationData, updatedAt: new Date() })
+      .where(eq(quotations.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteQuotation(id: string): Promise<boolean> {
+    const result = await db.delete(quotations).where(eq(quotations.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async generateQuoteNumber(): Promise<string> {
+    const count = await db.select().from(quotations);
+    const nextNumber = count.length + 1;
+    return `Q${new Date().getFullYear()}-${nextNumber.toString().padStart(4, '0')}`;
+  }
+
+  // Invoice methods
+  async getInvoices(): Promise<Invoice[]> {
+    return await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+  }
+
+  async getInvoice(id: string): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+    return invoice || undefined;
+  }
+
+  async createInvoice(invoiceData: InsertInvoice): Promise<Invoice> {
+    const [invoice] = await db.insert(invoices).values(invoiceData).returning();
+    return invoice;
+  }
+
+  async updateInvoice(id: string, invoiceData: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const [updated] = await db
+      .update(invoices)
+      .set({ ...invoiceData, updatedAt: new Date() })
+      .where(eq(invoices.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteInvoice(id: string): Promise<boolean> {
+    const result = await db.delete(invoices).where(eq(invoices.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async generateInvoiceNumber(): Promise<string> {
+    const count = await db.select().from(invoices);
+    const nextNumber = count.length + 1;
+    return `INV${new Date().getFullYear()}-${nextNumber.toString().padStart(4, '0')}`;
   }
 }
 

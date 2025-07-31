@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { LayoutGrid, List, Download, Filter, SortAsc } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { LayoutGrid, List, Download, SortAsc } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,60 +9,51 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 interface ViewOptionsProps {
-  title: string;
-  data: any[];
-  renderCard: (item: any) => React.ReactNode;
-  renderListItem: (item: any) => React.ReactNode;
-  columns: string[];
-  onExport?: (format: 'csv' | 'json') => void;
-  filterOptions?: { label: string; value: string; count?: number }[];
-  sortOptions?: { label: string; value: string }[];
-  onFilter?: (filter: string) => void;
-  onSort?: (sort: string) => void;
-  showExport?: boolean;
-  showFilter?: boolean;
-  showSort?: boolean;
+  view: 'cards' | 'list';
+  onViewChange: (view: 'cards' | 'list') => void;
+  searchTerm: string;
+  onSearchChange: (term: string) => void;
+  searchPlaceholder?: string;
+  sortBy: string;
+  onSortByChange: (sortBy: string) => void;
+  sortOrder: 'asc' | 'desc';
+  onSortOrderChange: (order: 'asc' | 'desc') => void;
+  sortOptions: { value: string; label: string }[];
+  onExport: () => any[];
+  exportFilename: string;
 }
 
 export default function ViewOptions({
-  title,
-  data,
-  renderCard,
-  renderListItem,
-  columns,
+  view,
+  onViewChange,
+  searchTerm,
+  onSearchChange,
+  searchPlaceholder = "Search...",
+  sortBy,
+  onSortByChange,
+  sortOrder,
+  onSortOrderChange,
+  sortOptions,
   onExport,
-  filterOptions = [],
-  sortOptions = [],
-  onFilter,
-  onSort,
-  showExport = true,
-  showFilter = false,
-  showSort = false
+  exportFilename
 }: ViewOptionsProps) {
-  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
-  const [currentFilter, setCurrentFilter] = useState<string>('all');
-  const [currentSort, setCurrentSort] = useState<string>('newest');
 
   const handleExport = (format: 'csv' | 'json') => {
-    if (onExport) {
-      onExport(format);
+    const data = onExport();
+    
+    if (format === 'csv') {
+      exportToCSV(data);
     } else {
-      // Default export implementation
-      if (format === 'csv') {
-        exportToCSV();
-      } else {
-        exportToJSON();
-      }
+      exportToJSON(data);
     }
   };
 
-  const exportToCSV = () => {
+  const exportToCSV = (data: any[]) => {
     if (data.length === 0) return;
     
-    const headers = columns.join(',');
+    const headers = Object.keys(data[0]).join(',');
     const csvData = data.map(item => 
-      columns.map(col => {
-        const value = item[col];
+      Object.values(item).map(value => {
         // Handle nested objects and arrays
         if (typeof value === 'object' && value !== null) {
           return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
@@ -73,161 +62,115 @@ export default function ViewOptions({
       }).join(',')
     ).join('\n');
     
-    const csv = `${headers}\n${csvData}`;
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  const exportToJSON = () => {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  const handleFilter = (filter: string) => {
-    setCurrentFilter(filter);
-    if (onFilter) {
-      onFilter(filter);
+    const csvContent = `${headers}\n${csvData}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${exportFilename}_export.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
-  const handleSort = (sort: string) => {
-    setCurrentSort(sort);
-    if (onSort) {
-      onSort(sort);
+  const exportToJSON = (data: any[]) => {
+    const jsonContent = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${exportFilename}_export.json`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle>{title}</CardTitle>
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Filter Options */}
-            {showFilter && filterOptions.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" data-testid="button-filter">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                    {currentFilter !== 'all' && (
-                      <Badge variant="secondary" className="ml-2 text-xs">
-                        {filterOptions.find(f => f.value === currentFilter)?.label}
-                      </Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => handleFilter('all')}>
-                    All Items
-                  </DropdownMenuItem>
-                  {filterOptions.map((option) => (
-                    <DropdownMenuItem key={option.value} onClick={() => handleFilter(option.value)}>
-                      {option.label}
-                      {option.count !== undefined && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          {option.count}
-                        </Badge>
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {/* Sort Options */}
-            {showSort && sortOptions.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" data-testid="button-sort">
-                    <SortAsc className="h-4 w-4 mr-2" />
-                    Sort
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {sortOptions.map((option) => (
-                    <DropdownMenuItem key={option.value} onClick={() => handleSort(option.value)}>
-                      {option.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {/* Export Options */}
-            {showExport && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" data-testid="button-export">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => handleExport('csv')}>
-                    Export as CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport('json')}>
-                    Export as JSON
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {/* View Mode Toggle */}
-            <div className="flex border rounded-md">
-              <Button
-                variant={viewMode === 'cards' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('cards')}
-                className="rounded-r-none"
-                data-testid="button-view-cards"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="rounded-l-none"
-                data-testid="button-view-list"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+    <div className="mb-6 space-y-4">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        
+        {/* Search Input */}
+        <div className="flex-1 max-w-md">
+          <Input
+            type="text"
+            placeholder={searchPlaceholder}
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full"
+          />
         </div>
-      </CardHeader>
-      <CardContent>
-        {data.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <p>No {title.toLowerCase()} found</p>
+
+        <div className="flex flex-wrap gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex rounded-md shadow-sm">
+            <Button
+              variant={view === 'cards' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onViewChange('cards')}
+              className="rounded-r-none"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={view === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onViewChange('list')}
+              className="rounded-l-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
           </div>
-        ) : (
-          <>
-            {viewMode === 'cards' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {data.map((item) => renderCard(item))}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {data.map((item) => renderListItem(item))}
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
+
+          {/* Sort Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <SortAsc className="h-4 w-4 mr-2" />
+                Sort
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {sortOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  onClick={() => onSortByChange(option.value)}
+                  className={sortBy === option.value ? 'bg-gray-100' : ''}
+                >
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+              <div className="border-t my-1"></div>
+              <DropdownMenuItem onClick={() => onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc')}>
+                {sortOrder === 'asc' ? 'Sort Descending' : 'Sort Ascending'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')}>
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </div>
   );
 }

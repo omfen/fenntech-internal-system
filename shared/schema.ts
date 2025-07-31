@@ -388,3 +388,131 @@ export interface EmailReport {
   notes?: string;
   sessionId: string;
 }
+
+// Company settings table
+export const companySettings = pgTable("company_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyName: varchar("company_name").notNull(),
+  telephone: varchar("telephone"),
+  email: varchar("email"),
+  url: varchar("url"),
+  address: text("address"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Clients table
+export const clients = pgTable("clients", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  contactPerson: varchar("contact_person"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  billingAddress: text("billing_address"),
+  taxId: varchar("tax_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Quotations table
+export const quotations = pgTable("quotations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quoteNumber: varchar("quote_number").notNull().unique(),
+  clientId: varchar("client_id").notNull().references(() => clients.id),
+  quoteDate: timestamp("quote_date").notNull(),
+  expirationDate: timestamp("expiration_date").notNull(),
+  items: jsonb("items").notNull(), // Array of line items
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  gctAmount: decimal("gct_amount", { precision: 10, scale: 2 }).default("0.00"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0.00"),
+  discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }).default("0.00"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("JMD"),
+  notes: text("notes"),
+  status: varchar("status").notNull().default("draft"), // draft, sent, accepted, rejected, expired
+  createdById: varchar("created_by_id").notNull(),
+  createdByName: varchar("created_by_name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Invoices table
+export const invoices = pgTable("invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceNumber: varchar("invoice_number").notNull().unique(),
+  clientId: varchar("client_id").notNull().references(() => clients.id),
+  quotationId: varchar("quotation_id").references(() => quotations.id),
+  invoiceDate: timestamp("invoice_date").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  items: jsonb("items").notNull(), // Array of line items
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
+  gctAmount: decimal("gct_amount", { precision: 10, scale: 2 }).default("0.00"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0.00"),
+  discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }).default("0.00"),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("JMD"),
+  paymentTerms: varchar("payment_terms"),
+  notes: text("notes"),
+  status: varchar("status").notNull().default("draft"), // draft, sent, paid, overdue, cancelled
+  createdById: varchar("created_by_id").notNull(),
+  createdByName: varchar("created_by_name").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Zod schemas for validation
+export const insertCompanySettingsSchema = createInsertSchema(companySettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotationSchema = createInsertSchema(quotations, {
+  quoteDate: z.string().transform((val) => new Date(val)),
+  expirationDate: z.string().transform((val) => new Date(val)),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices, {
+  invoiceDate: z.string().transform((val) => new Date(val)),
+  dueDate: z.string().transform((val) => new Date(val)),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Export types
+export type CompanySettings = typeof companySettings.$inferSelect;
+export type InsertCompanySettings = z.infer<typeof insertCompanySettingsSchema>;
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = z.infer<typeof insertClientSchema>;
+
+export type Quotation = typeof quotations.$inferSelect;
+export type InsertQuotation = z.infer<typeof insertQuotationSchema>;
+
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+
+// Line item interface
+export interface LineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+// Status constants
+export const quotationStatuses = ["draft", "sent", "accepted", "rejected", "expired"] as const;
+export const invoiceStatuses = ["draft", "sent", "paid", "overdue", "cancelled"] as const;
