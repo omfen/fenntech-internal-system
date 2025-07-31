@@ -25,7 +25,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Phone, Mail, Package, Plus, Edit, Trash2, Calendar } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Phone, Mail, Package, Plus, Edit, Trash2, Calendar, UserIcon, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
@@ -43,6 +51,10 @@ export default function CustomerInquiriesPage() {
 
   const { data: inquiries = [], isLoading } = useQuery<CustomerInquiry[]>({
     queryKey: ["/api/customer-inquiries"],
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
   });
 
   const createMutation = useMutation({
@@ -143,6 +155,46 @@ export default function CustomerInquiriesPage() {
     },
   });
 
+  const statusChangeMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const inquiry = inquiries.find(i => i.id === id);
+      if (!inquiry) throw new Error("Inquiry not found");
+      
+      const response = await fetch(`/api/customer-inquiries/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
+        },
+        body: JSON.stringify({
+          customerName: inquiry.customerName,
+          telephoneNumber: inquiry.telephoneNumber,
+          itemInquiry: inquiry.itemInquiry,
+          status: status,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update status");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customer-inquiries"] });
+      toast({
+        title: "Success",
+        description: "Status updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       customerName: "",
@@ -172,6 +224,18 @@ export default function CustomerInquiriesPage() {
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
+  };
+
+  const handleStatusChange = (id: string, status: string) => {
+    statusChangeMutation.mutate({ id, status });
+  };
+
+  const statusColors = {
+    new: "bg-blue-100 text-blue-800",
+    contacted: "bg-yellow-100 text-yellow-800",
+    "follow-up": "bg-orange-100 text-orange-800",
+    completed: "bg-green-100 text-green-800",
+    closed: "bg-gray-100 text-gray-800",
   };
 
   if (isLoading) {
@@ -292,6 +356,9 @@ export default function CustomerInquiriesPage() {
                       <h3 className="text-lg font-semibold text-gray-900" data-testid={`inquiry-customer-${inquiry.id}`}>
                         {inquiry.customerName}
                       </h3>
+                      <Badge className={statusColors[inquiry.status as keyof typeof statusColors]}>
+                        {inquiry.status === "follow-up" ? "Follow-up" : inquiry.status}
+                      </Badge>
                     </div>
                     
                     <div className="space-y-2 mb-4">
@@ -301,7 +368,7 @@ export default function CustomerInquiriesPage() {
                       </div>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(inquiry.createdAt), "PPP")}</span>
+                        <span>{inquiry.createdAt ? format(new Date(inquiry.createdAt), "PPP") : "Unknown"}</span>
                       </div>
                     </div>
                     
@@ -311,9 +378,26 @@ export default function CustomerInquiriesPage() {
                         {inquiry.itemInquiry}
                       </p>
                     </div>
+
+                    <div className="mt-4 space-y-2">
+                      <div className="flex space-x-2">
+                        <Select onValueChange={(value) => handleStatusChange(inquiry.id, value)}>
+                          <SelectTrigger className="w-full" data-testid={`select-status-${inquiry.id}`}>
+                            <SelectValue placeholder="Change Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">New</SelectItem>
+                            <SelectItem value="contacted">Contacted</SelectItem>
+                            <SelectItem value="follow-up">Follow-up</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 sm:ml-4">
+                  <div className="flex flex-col space-y-2 sm:ml-4 sm:flex-row sm:space-y-0 sm:space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
