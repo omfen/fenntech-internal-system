@@ -570,8 +570,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           price: 24.49
         },
         'B088P6RXJY': {
-          name: 'Logitech C920x HD Pro Webcam Full HD 1080p',
-          price: 69.99
+          name: 'Continental Gatorskin Black Edition Set of 2 (700x25)',
+          price: 89.99
         },
       };
 
