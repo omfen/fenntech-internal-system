@@ -4,6 +4,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -13,6 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,14 +42,31 @@ import {
   CheckCircle, 
   XCircle,
   Crown,
-  User as UserIcon
+  User as UserIcon,
+  Plus
 } from "lucide-react";
 import type { User } from "@shared/schema";
+
+interface CreateUserForm {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  role: 'administrator' | 'user';
+}
 
 export default function UserManagementPage() {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [createUserForm, setCreateUserForm] = useState<CreateUserForm>({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    role: 'user'
+  });
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -125,6 +151,34 @@ export default function UserManagementPage() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async (userData: CreateUserForm) => {
+      return await apiRequest('POST', '/api/admin/users', userData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setIsCreateDialogOpen(false);
+      setCreateUserForm({
+        email: '',
+        password: '',
+        firstName: '',
+        lastName: '',
+        role: 'user'
+      });
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create user",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRoleChange = (userId: string, newRole: string) => {
     updateRoleMutation.mutate({ userId, role: newRole });
   };
@@ -135,6 +189,38 @@ export default function UserManagementPage() {
 
   const handleDeleteUser = (userId: string) => {
     deleteUserMutation.mutate(userId);
+  };
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!createUserForm.email || !createUserForm.password || !createUserForm.firstName || !createUserForm.lastName) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (createUserForm.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createUserMutation.mutate(createUserForm);
+  };
+
+  const handleFormChange = (field: keyof CreateUserForm, value: string) => {
+    setCreateUserForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   if (isLoading) {
@@ -150,13 +236,113 @@ export default function UserManagementPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <Users className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center space-x-3 mb-2">
+              <Users className="h-8 w-8 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+            </div>
+            <p className="text-gray-600">
+              Manage user accounts, roles, and permissions for the FennTech pricing system.
+            </p>
+          </div>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-user">
+                <Plus className="h-4 w-4 mr-2" />
+                Create User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={createUserForm.email}
+                    onChange={(e) => handleFormChange('email', e.target.value)}
+                    placeholder="user@fenntechltd.com"
+                    required
+                    data-testid="input-email"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input
+                      id="firstName"
+                      value={createUserForm.firstName}
+                      onChange={(e) => handleFormChange('firstName', e.target.value)}
+                      placeholder="John"
+                      required
+                      data-testid="input-first-name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name *</Label>
+                    <Input
+                      id="lastName"
+                      value={createUserForm.lastName}
+                      onChange={(e) => handleFormChange('lastName', e.target.value)}
+                      placeholder="Doe"
+                      required
+                      data-testid="input-last-name"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={createUserForm.password}
+                    onChange={(e) => handleFormChange('password', e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    required
+                    minLength={6}
+                    data-testid="input-password"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={createUserForm.role} onValueChange={(value: 'administrator' | 'user') => handleFormChange('role', value)}>
+                    <SelectTrigger data-testid="select-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="administrator">Administrator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createUserMutation.isPending}
+                    data-testid="button-submit-create-user"
+                  >
+                    {createUserMutation.isPending ? "Creating..." : "Create User"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
-        <p className="text-gray-600">
-          Manage user accounts, roles, and permissions for the FennTech pricing system.
-        </p>
       </div>
 
       <div className="grid gap-6">
