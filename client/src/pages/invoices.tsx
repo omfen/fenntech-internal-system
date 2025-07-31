@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Edit, Trash2, Receipt, Users, Calendar, DollarSign, Minus, Calculator, CreditCard } from 'lucide-react';
+import { Plus, Edit, Trash2, Receipt, Users, Calendar, DollarSign, Minus, Calculator, CreditCard, Download, Mail } from 'lucide-react';
 import Header from '@/components/header';
 import Navigation from '@/components/navigation';
 import ViewOptions from '@/components/view-options';
@@ -20,6 +20,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Invoice, Client, Quotation, LineItem } from '@shared/schema';
 import { format, addDays } from 'date-fns';
 import DateTimeInput from '@/components/datetime-input';
+import { downloadInvoicePDF } from '@/lib/pdf-generator';
+import type { CompanySettings } from '@shared/schema';
 
 const lineItemSchema = z.object({
   id: z.string(),
@@ -73,6 +75,10 @@ export default function Invoices() {
 
   const { data: quotations = [] } = useQuery<Quotation[]>({
     queryKey: ['/api/quotations'],
+  });
+
+  const { data: companySettings } = useQuery<CompanySettings>({
+    queryKey: ['/api/company-settings'],
   });
 
   const form = useForm<InvoiceForm>({
@@ -251,6 +257,52 @@ export default function Invoices() {
     }
   };
 
+  const handleDownloadPDF = (invoice: Invoice) => {
+    try {
+      downloadInvoicePDF(invoice, companySettings);
+      toast({
+        title: 'Success',
+        description: 'PDF downloaded successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to generate PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEmailInvoice = async (invoice: Invoice) => {
+    try {
+      const clientData = clients.find(c => c.id === invoice.clientId);
+      if (!clientData?.email) {
+        toast({
+          title: 'Error',
+          description: 'Client email not found',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await apiRequest('POST', `/api/invoices/${invoice.id}/email`, {
+        recipientEmail: clientData.email,
+        recipientName: clientData.name,
+      });
+
+      toast({
+        title: 'Success',
+        description: `Invoice emailed to ${clientData.email}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send email',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleNewInvoice = () => {
     setEditingInvoice(null);
     setCreateFromQuote(false);
@@ -404,12 +456,31 @@ export default function Invoices() {
                       <Receipt className="h-5 w-5 text-blue-600" />
                       <span className="truncate">{invoice.invoiceNumber}</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadPDF(invoice)}
+                        data-testid={`button-download-${invoice.id}`}
+                        title="Download PDF"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEmailInvoice(invoice)}
+                        data-testid={`button-email-${invoice.id}`}
+                        title="Email Invoice"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(invoice)}
                         data-testid={`button-edit-${invoice.id}`}
+                        title="Edit"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -418,6 +489,7 @@ export default function Invoices() {
                         size="sm"
                         onClick={() => handleDelete(invoice.id)}
                         data-testid={`button-delete-${invoice.id}`}
+                        title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -493,12 +565,31 @@ export default function Invoices() {
                         </td>
                         <td className="p-4">{getStatusBadge(invoice.status)}</td>
                         <td className="p-4">
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadPDF(invoice)}
+                              data-testid={`button-download-${invoice.id}`}
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEmailInvoice(invoice)}
+                              data-testid={`button-email-${invoice.id}`}
+                              title="Email Invoice"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(invoice)}
                               data-testid={`button-edit-${invoice.id}`}
+                              title="Edit"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -507,6 +598,7 @@ export default function Invoices() {
                               size="sm"
                               onClick={() => handleDelete(invoice.id)}
                               data-testid={`button-delete-${invoice.id}`}
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

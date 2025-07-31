@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Edit, Trash2, FileText, Users, Calendar, DollarSign, Minus, Calculator } from 'lucide-react';
+import { Plus, Edit, Trash2, FileText, Users, Calendar, DollarSign, Minus, Calculator, Download, Mail } from 'lucide-react';
 import Header from '@/components/header';
 import Navigation from '@/components/navigation';
 import ViewOptions from '@/components/view-options';
@@ -21,6 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Quotation, Client, LineItem } from '@shared/schema';
 import { format, addDays } from 'date-fns';
 import DateTimeInput from '@/components/datetime-input';
+import { downloadQuotationPDF } from '@/lib/pdf-generator';
+import type { CompanySettings } from '@shared/schema';
 
 const lineItemSchema = z.object({
   id: z.string(),
@@ -65,6 +67,10 @@ export default function Quotations() {
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
+  });
+
+  const { data: companySettings } = useQuery<CompanySettings>({
+    queryKey: ['/api/company-settings'],
   });
 
   const form = useForm<QuotationForm>({
@@ -219,6 +225,52 @@ export default function Quotations() {
     }
   };
 
+  const handleDownloadPDF = (quotation: Quotation) => {
+    try {
+      downloadQuotationPDF(quotation, companySettings);
+      toast({
+        title: 'Success',
+        description: 'PDF downloaded successfully',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to generate PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEmailQuotation = async (quotation: Quotation) => {
+    try {
+      const clientData = clients.find(c => c.id === quotation.clientId);
+      if (!clientData?.email) {
+        toast({
+          title: 'Error',
+          description: 'Client email not found',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await apiRequest('POST', `/api/quotations/${quotation.id}/email`, {
+        recipientEmail: clientData.email,
+        recipientName: clientData.name,
+      });
+
+      toast({
+        title: 'Success',
+        description: `Quotation emailed to ${clientData.email}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send email',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleNewQuotation = () => {
     setEditingQuotation(null);
     form.reset();
@@ -341,12 +393,31 @@ export default function Quotations() {
                       <FileText className="h-5 w-5 text-blue-600" />
                       <span className="truncate">{quotation.quoteNumber}</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownloadPDF(quotation)}
+                        data-testid={`button-download-${quotation.id}`}
+                        title="Download PDF"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEmailQuotation(quotation)}
+                        data-testid={`button-email-${quotation.id}`}
+                        title="Email Quotation"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(quotation)}
                         data-testid={`button-edit-${quotation.id}`}
+                        title="Edit"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -355,6 +426,7 @@ export default function Quotations() {
                         size="sm"
                         onClick={() => handleDelete(quotation.id)}
                         data-testid={`button-delete-${quotation.id}`}
+                        title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -412,12 +484,31 @@ export default function Quotations() {
                         <td className="p-4 font-semibold">{quotation.currency} {quotation.total}</td>
                         <td className="p-4">{getStatusBadge(quotation.status)}</td>
                         <td className="p-4">
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadPDF(quotation)}
+                              data-testid={`button-download-${quotation.id}`}
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEmailQuotation(quotation)}
+                              data-testid={`button-email-${quotation.id}`}
+                              title="Email Quotation"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(quotation)}
                               data-testid={`button-edit-${quotation.id}`}
+                              title="Edit"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -426,6 +517,7 @@ export default function Quotations() {
                               size="sm"
                               onClick={() => handleDelete(quotation.id)}
                               data-testid={`button-delete-${quotation.id}`}
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

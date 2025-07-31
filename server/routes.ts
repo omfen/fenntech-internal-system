@@ -2354,6 +2354,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Email quotation
+  app.post('/api/quotations/:id/email', authenticateToken, async (req, res) => {
+    try {
+      const { recipientEmail, recipientName } = req.body;
+      
+      if (!recipientEmail) {
+        return res.status(400).json({ error: 'Recipient email is required' });
+      }
+
+      const quotation = await storage.getQuotation(req.params.id);
+      if (!quotation) {
+        return res.status(404).json({ error: 'Quotation not found' });
+      }
+
+      const companySettings = await storage.getCompanySettings();
+      
+      // Email configuration
+      const fromEmail = process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntech.com';
+      const companyName = companySettings?.name || 'FennTech';
+
+      const mailOptions = {
+        from: `${companyName} <${fromEmail}>`,
+        to: recipientEmail,
+        subject: `Quotation ${quotation.quoteNumber} from ${companyName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Quotation ${quotation.quoteNumber}</h2>
+            
+            <p>Dear ${recipientName || 'Valued Customer'},</p>
+            
+            <p>Please find your quotation details below:</p>
+            
+            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0;">Quotation Summary</h3>
+              <p><strong>Quote Number:</strong> ${quotation.quoteNumber}</p>
+              <p><strong>Date:</strong> ${new Date(quotation.quoteDate).toLocaleDateString()}</p>
+              <p><strong>Valid Until:</strong> ${new Date(quotation.expirationDate).toLocaleDateString()}</p>
+              <p><strong>Total Amount:</strong> ${quotation.currency} ${quotation.total}</p>
+              <p><strong>Status:</strong> ${quotation.status.toUpperCase()}</p>
+            </div>
+
+            ${quotation.notes ? `<p><strong>Additional Notes:</strong><br>${quotation.notes}</p>` : ''}
+            
+            <p>If you have any questions or would like to proceed with this quotation, please don't hesitate to contact us.</p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+              <p style="margin: 0;"><strong>${companyName}</strong></p>
+              ${companySettings?.phone ? `<p style="margin: 5px 0;">Phone: ${companySettings.phone}</p>` : ''}
+              ${companySettings?.email ? `<p style="margin: 5px 0;">Email: ${companySettings.email}</p>` : ''}
+              ${companySettings?.website ? `<p style="margin: 5px 0;">Website: ${companySettings.website}</p>` : ''}
+            </div>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+
+      await storage.logEntityChange(
+        'quotation',
+        quotation.id,
+        'email_sent',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Quotation ${quotation.quoteNumber} emailed to ${recipientEmail}`
+      );
+
+      res.json({ success: true, message: 'Quotation emailed successfully' });
+    } catch (error) {
+      console.error('Error emailing quotation:', error);
+      res.status(500).json({ error: 'Failed to send email' });
+    }
+  });
+
   // Invoice routes
   app.get('/api/invoices', authenticateToken, async (req, res) => {
     try {
@@ -2463,6 +2539,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting invoice:', error);
       res.status(500).json({ error: 'Failed to delete invoice' });
+    }
+  });
+
+  // Email invoice
+  app.post('/api/invoices/:id/email', authenticateToken, async (req, res) => {
+    try {
+      const { recipientEmail, recipientName } = req.body;
+      
+      if (!recipientEmail) {
+        return res.status(400).json({ error: 'Recipient email is required' });
+      }
+
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      const companySettings = await storage.getCompanySettings();
+      
+      // Email configuration
+      const fromEmail = process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntech.com';
+      const companyName = companySettings?.name || 'FennTech';
+
+      const mailOptions = {
+        from: `${companyName} <${fromEmail}>`,
+        to: recipientEmail,
+        subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Invoice ${invoice.invoiceNumber}</h2>
+            
+            <p>Dear ${recipientName || 'Valued Customer'},</p>
+            
+            <p>Please find your invoice details below:</p>
+            
+            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0;">
+              <h3 style="margin-top: 0;">Invoice Summary</h3>
+              <p><strong>Invoice Number:</strong> ${invoice.invoiceNumber}</p>
+              <p><strong>Date:</strong> ${new Date(invoice.invoiceDate).toLocaleDateString()}</p>
+              <p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>
+              <p><strong>Total Amount:</strong> ${invoice.currency} ${invoice.total}</p>
+              <p><strong>Amount Paid:</strong> ${invoice.currency} ${invoice.amountPaid || '0.00'}</p>
+              <p><strong>Balance Due:</strong> ${invoice.currency} ${invoice.balanceDue}</p>
+              <p><strong>Status:</strong> ${invoice.status.toUpperCase()}</p>
+            </div>
+
+            ${invoice.paymentTerms ? `<p><strong>Payment Terms:</strong> ${invoice.paymentTerms}</p>` : ''}
+            ${invoice.notes ? `<p><strong>Additional Notes:</strong><br>${invoice.notes}</p>` : ''}
+            
+            <p>Please ensure payment is made by the due date to avoid any late fees. If you have any questions about this invoice, please don't hesitate to contact us.</p>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+              <p style="margin: 0;"><strong>${companyName}</strong></p>
+              ${companySettings?.phone ? `<p style="margin: 5px 0;">Phone: ${companySettings.phone}</p>` : ''}
+              ${companySettings?.email ? `<p style="margin: 5px 0;">Email: ${companySettings.email}</p>` : ''}
+              ${companySettings?.website ? `<p style="margin: 5px 0;">Website: ${companySettings.website}</p>` : ''}
+            </div>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+
+      await storage.logEntityChange(
+        'invoice',
+        invoice.id,
+        'email_sent',
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Invoice ${invoice.invoiceNumber} emailed to ${recipientEmail}`
+      );
+
+      res.json({ success: true, message: 'Invoice emailed successfully' });
+    } catch (error) {
+      console.error('Error emailing invoice:', error);
+      res.status(500).json({ error: 'Failed to send email' });
     }
   });
 
