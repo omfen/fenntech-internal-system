@@ -1,6 +1,7 @@
 import { Calculator, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import NotificationCenter from "@/components/notification-center";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,8 @@ export default function Header() {
                 </p>
                 <p className="text-xs text-gray-500 capitalize">{user.role}</p>
               </div>
+              
+              <NotificationCenter />
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

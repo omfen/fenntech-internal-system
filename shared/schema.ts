@@ -518,6 +518,33 @@ export interface LineItem {
   total: number;
 }
 
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: varchar("type").notNull(), // due_date, status_change, assignment, overdue, system_alert
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  entityType: varchar("entity_type"), // task, ticket, work_order, call_log, etc.
+  entityId: varchar("entity_id"),
+  priority: varchar("priority").default("medium"), // low, medium, high, urgent
+  isRead: boolean("is_read").default(false),
+  actionUrl: varchar("action_url"), // URL to navigate to when clicked
+  metadata: jsonb("metadata").default({}), // Additional context data
+  createdAt: timestamp("created_at").defaultNow(),
+  readAt: timestamp("read_at"),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Status constants
 export const quotationStatuses = ["draft", "sent", "accepted", "rejected", "expired"] as const;
 export const invoiceStatuses = ["draft", "sent", "paid", "overdue", "cancelled"] as const;
+export const notificationTypes = ["due_date", "status_change", "assignment", "overdue", "system_alert"] as const;
+export const notificationPriorities = ["low", "medium", "high", "urgent"] as const;

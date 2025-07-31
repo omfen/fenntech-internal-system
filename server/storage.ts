@@ -1,4 +1,4 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, type ChangeLog, type InsertChangeLog, type CompanySettings, type InsertCompanySettings, type Client, type InsertClient, type Quotation, type InsertQuotation, type Invoice, type InsertInvoice, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs, changeLog, companySettings, clients, quotations, invoices } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, type ChangeLog, type InsertChangeLog, type CompanySettings, type InsertCompanySettings, type Client, type InsertClient, type Quotation, type InsertQuotation, type Invoice, type InsertInvoice, type Notification, type InsertNotification, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs, changeLog, companySettings, clients, quotations, invoices, notifications } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 import { hashPassword } from "./auth";
@@ -113,6 +113,13 @@ export interface IStorage {
   updateInvoice(id: string, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: string): Promise<boolean>;
   generateInvoiceNumber(): Promise<string>;
+
+  // Notifications
+  getNotifications(userId: string, limit?: number): Promise<Notification[]>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  markNotificationAsRead(id: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  deleteNotification(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -822,6 +829,44 @@ export class DatabaseStorage implements IStorage {
     const count = await db.select().from(invoices);
     const nextNumber = count.length + 1;
     return `INV${new Date().getFullYear()}-${nextNumber.toString().padStart(4, '0')}`;
+  }
+
+  // Notification methods
+  async getNotifications(userId: string, limit = 50): Promise<Notification[]> {
+    return await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit);
+  }
+
+  async createNotification(notificationData: InsertNotification): Promise<Notification> {
+    const [notification] = await db
+      .insert(notifications)
+      .values(notificationData)
+      .returning();
+    return notification;
+  }
+
+  async markNotificationAsRead(id: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notifications.userId, userId));
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    await db
+      .delete(notifications)
+      .where(eq(notifications.id, id));
   }
 }
 

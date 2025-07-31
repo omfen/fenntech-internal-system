@@ -10,6 +10,7 @@ import multer from "multer";
 import nodemailer from "nodemailer";
 import { AmazonProductAPI } from "./amazon-api";
 import { HelpService } from "./help-service";
+import { NotificationService } from "./notification-service";
 import type { AuthenticatedRequest } from "./auth";
 // pdf-parse will be dynamically imported when needed
 
@@ -1294,9 +1295,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `Ticket created: ${ticket.title}`
       );
       
-      // TODO: Send email notification if assigned to a user
-      if (ticket.assignedUserId) {
-        // Add email notification logic here
+      // Create assignment notification if ticket is assigned to someone else
+      if (ticket.assignedUserId && ticket.assignedUserId !== req.user!.id) {
+        try {
+          await NotificationService.createAssignmentNotification(
+            "ticket",
+            ticket.id,
+            ticket.title,
+            ticket.assignedUserId,
+            req.user!.id
+          );
+        } catch (error) {
+          console.error("Error creating assignment notification:", error);
+        }
       }
       
       res.status(201).json(ticket);
@@ -1519,6 +1530,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const task = await storage.createTask(validatedData);
+      
+      // Create assignment notification if task is assigned to someone else
+      if (task.assignedUserId && task.assignedUserId !== req.user!.id) {
+        try {
+          await NotificationService.createAssignmentNotification(
+            "task",
+            task.id,
+            task.title,
+            task.assignedUserId,
+            req.user!.id
+          );
+        } catch (error) {
+          console.error("Error creating assignment notification:", error);
+        }
+      }
+      
       res.status(201).json(task);
     } catch (error) {
       console.error("Error creating task:", error);
@@ -2101,6 +2128,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting invoice:', error);
       res.status(500).json({ error: 'Failed to delete invoice' });
+    }
+  });
+
+  // Notification routes
+  app.get('/api/notifications', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      const notifications = await storage.getNotifications(userId, limit);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Create sample notifications for testing
+  app.post('/api/notifications/create-sample', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const sampleNotifications = [
+        {
+          userId: userId,
+          type: 'assignment' as const,
+          priority: 'high' as const,
+          title: 'New Task Assignment',
+          message: 'You have been assigned to "Fix printer connectivity" task',
+          entityType: 'task' as const,
+          entityId: 'sample-task-1',
+          entityName: 'Fix printer connectivity',
+          isRead: false,
+        },
+        {
+          userId: userId,
+          type: 'status_change' as const,
+          priority: 'medium' as const,
+          title: 'Ticket Status Updated',
+          message: 'Ticket "Server maintenance" has been moved to In Progress',
+          entityType: 'ticket' as const,
+          entityId: 'sample-ticket-1',
+          entityName: 'Server maintenance',
+          isRead: false,
+        },
+        {
+          userId: userId,
+          type: 'due_date' as const,
+          priority: 'urgent' as const,
+          title: 'Due Date Approaching',
+          message: 'Work order "Computer repair for John Doe" is due tomorrow',
+          entityType: 'work_order' as const,
+          entityId: 'sample-wo-1',
+          entityName: 'Computer repair for John Doe',
+          isRead: false,
+        }
+      ];
+
+      for (const notification of sampleNotifications) {
+        await storage.createNotification(notification);
+      }
+      
+      res.json({ message: "Sample notifications created successfully" });
+    } catch (error) {
+      console.error("Error creating sample notifications:", error);
+      res.status(500).json({ message: "Failed to create sample notifications" });
+    }
+  });
+
+  app.patch('/api/notifications/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      await storage.markNotificationAsRead(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating notification:", error);
+      res.status(500).json({ message: "Failed to update notification" });
+    }
+  });
+
+  app.patch('/api/notifications/mark-all-read', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.delete('/api/notifications/:id', authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      await storage.deleteNotification(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
     }
   });
 
