@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Calendar, User as UserIcon, AlertCircle, CheckCircle, Clock, X } from "lucide-react";
+import { Plus, Calendar, User as UserIcon, AlertCircle, CheckCircle, Clock, X, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -9,6 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +27,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
+import ViewOptions from "@/components/view-options";
 import DateTimeInput from "@/components/datetime-input";
 
 // Form interface that matches what react-hook-form expects
@@ -61,6 +70,22 @@ export default function Tasks() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  
+  // View options state
+  const [view, setView] = useState<'cards' | 'list'>('cards');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Sort options
+  const sortOptions = [
+    { value: 'title', label: 'Title' },
+    { value: 'urgencyLevel', label: 'Urgency Level' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'status', label: 'Status' },
+    { value: 'dueDate', label: 'Due Date' },
+    { value: 'createdAt', label: 'Date Created' },
+  ];
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks"],
@@ -218,6 +243,57 @@ export default function Tasks() {
       }
     });
   };
+
+  // Filter and sort tasks
+  const filteredTasks = tasks
+    .filter((task: Task) =>
+      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (task.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.urgencyLevel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.priority.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (task.assignedUserName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (task.notes || '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a: Task, b: Task) => {
+      let valueA: any, valueB: any;
+      
+      switch (sortBy) {
+        case 'title':
+          valueA = a.title.toLowerCase();
+          valueB = b.title.toLowerCase();
+          break;
+        case 'urgencyLevel':
+          const urgencyOrder = { low: 1, medium: 2, high: 3, urgent: 4 };
+          valueA = urgencyOrder[a.urgencyLevel as keyof typeof urgencyOrder];
+          valueB = urgencyOrder[b.urgencyLevel as keyof typeof urgencyOrder];
+          break;
+        case 'priority':
+          const priorityOrder = { low: 1, normal: 2, high: 3, critical: 4 };
+          valueA = priorityOrder[a.priority as keyof typeof priorityOrder];
+          valueB = priorityOrder[b.priority as keyof typeof priorityOrder];
+          break;
+        case 'status':
+          valueA = a.status;
+          valueB = b.status;
+          break;
+        case 'dueDate':
+          valueA = a.dueDate ? new Date(a.dueDate) : new Date('9999-12-31');
+          valueB = b.dueDate ? new Date(b.dueDate) : new Date('9999-12-31');
+          break;
+        case 'createdAt':
+        default:
+          valueA = new Date(a.createdAt || '');
+          valueB = new Date(b.createdAt || '');
+          break;
+      }
+      
+      if (sortOrder === 'asc') {
+        return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+      } else {
+        return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+      }
+    });
 
   if (isLoading) {
     return (
@@ -446,7 +522,33 @@ export default function Tasks() {
         </Dialog>
       </div>
 
-      {tasks.length === 0 ? (
+      {/* View Options */}
+      <ViewOptions
+        view={view}
+        onViewChange={setView}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search tasks..."
+        sortBy={sortBy}
+        onSortByChange={setSortBy}
+        sortOrder={sortOrder}
+        onSortOrderChange={setSortOrder}
+        sortOptions={sortOptions}
+        onExport={() => filteredTasks.map((task: Task) => ({
+          title: task.title,
+          description: task.description || '',
+          urgency: task.urgencyLevel,
+          priority: task.priority,
+          status: task.status,
+          assignedTo: task.assignedUserName || 'Unassigned',
+          dueDate: task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : '',
+          created: task.createdAt ? format(new Date(task.createdAt), 'yyyy-MM-dd') : '',
+          notes: task.notes || '',
+        }))}
+        exportFilename="tasks"
+      />
+
+      {filteredTasks.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <CheckCircle className="h-12 w-12 text-gray-400 mb-4" />
@@ -458,9 +560,9 @@ export default function Tasks() {
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : view === 'cards' ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <Card key={task.id} className="hover:shadow-lg transition-shadow" data-testid={`card-task-${task.id}`}>
               <CardHeader>
                 <div className="flex justify-between items-start">
@@ -576,6 +678,122 @@ export default function Tasks() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      ) : (
+        <div className="mt-6">
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Urgency</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTasks.map((task: Task) => (
+                    <TableRow key={task.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{task.title}</div>
+                          {task.description && (
+                            <div className="text-sm text-gray-500 mt-1">
+                              {task.description.length > 100 
+                                ? `${task.description.substring(0, 100)}...` 
+                                : task.description}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={urgencyColors[task.urgencyLevel as keyof typeof urgencyColors]}>
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          {task.urgencyLevel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={priorityColors[task.priority as keyof typeof priorityColors]}>
+                          {task.priority}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Select 
+                            value={task.status} 
+                            onValueChange={(value) => handleStatusChange(task.id, value)}
+                          >
+                            <SelectTrigger className="w-full" data-testid={`select-status-${task.id}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <Select 
+                            value={task.assignedUserId || "unassigned"} 
+                            onValueChange={(value) => handleAssignment(task.id, value)}
+                          >
+                            <SelectTrigger className="w-full" data-testid={`select-assign-${task.id}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unassigned">Unassigned</SelectItem>
+                              {users.map((u) => (
+                                <SelectItem key={u.id} value={u.id}>
+                                  {u.firstName} {u.lastName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {task.dueDate ? (
+                          <div className="text-sm">
+                            {format(new Date(task.dueDate), task.dueDate.includes('T') ? "MMM dd, yyyy 'at' h:mm a" : "MMM dd, yyyy")}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">No due date</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex space-x-1 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(task)}
+                            data-testid={`button-edit-${task.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteTaskMutation.mutate(task.id)}
+                            data-testid={`button-delete-${task.id}`}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       )}
       </div>
