@@ -545,8 +545,62 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Pricing Trends */}
-        <PriceTrendDashboard />
+        {/* Activity Feed and Price Trends */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+          {/* Recent Activity Feed */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {changeLog.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No recent activity</p>
+                ) : (
+                  changeLog.slice(0, 10).map((change: any, index: number) => (
+                    <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-shrink-0 mt-1">
+                        {change.action === 'created' && <CheckCircle className="h-4 w-4 text-green-600" />}
+                        {change.action === 'updated' && <Clock className="h-4 w-4 text-blue-600" />}
+                        {change.action === 'deleted' && <AlertCircle className="h-4 w-4 text-red-600" />}
+                        {change.action === 'status_changed' && <TrendingUp className="h-4 w-4 text-orange-600" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">
+                          {change.description}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-500">
+                            by {change.userName}
+                          </span>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-500">
+                            {format(new Date(change.createdAt), 'MMM d, h:mm a')}
+                          </span>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className="mt-2 text-xs"
+                          data-testid={`activity-${change.entityType}`}
+                        >
+                          {change.entityType.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Price Trends */}
+          <div>
+            <PriceTrendDashboard />
+          </div>
+        </div>
       </div>
     </div>
   );

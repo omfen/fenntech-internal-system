@@ -225,6 +225,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user!.id,
       });
       const inquiry = await storage.createCustomerInquiry(inquiryData);
+      
+      // Log creation
+      await storage.logEntityChange(
+        "customer_inquiry",
+        inquiry.id,
+        "created",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Customer inquiry created: ${inquiry.customerName} - ${inquiry.itemDescription}`
+      );
+      
       res.status(201).json(inquiry);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -236,13 +250,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/customer-inquiries/:id", authenticateToken, async (req, res) => {
+  app.put("/api/customer-inquiries/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const inquiryData = insertCustomerInquirySchema.parse(req.body);
       const inquiry = await storage.updateCustomerInquiry(req.params.id, inquiryData);
       if (!inquiry) {
         return res.status(404).json({ message: "Customer inquiry not found" });
       }
+      
+      // Log update
+      await storage.logEntityChange(
+        "customer_inquiry",
+        req.params.id,
+        "updated",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Customer inquiry updated: ${inquiry.customerName} - ${inquiry.itemDescription}`
+      );
+      
       res.json(inquiry);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -254,12 +282,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/customer-inquiries/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/customer-inquiries/:id", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
     try {
+      // Get inquiry details for logging before deletion
+      const inquiry = await storage.getCustomerInquiryById(req.params.id);
+      if (!inquiry) {
+        return res.status(404).json({ message: "Customer inquiry not found" });
+      }
+      
       const deleted = await storage.deleteCustomerInquiry(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Customer inquiry not found" });
       }
+      
+      // Log deletion
+      await storage.logEntityChange(
+        "customer_inquiry",
+        req.params.id,
+        "deleted",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Customer inquiry deleted: ${inquiry.customerName} - ${inquiry.itemDescription}`
+      );
+      
       res.status(204).send();
     } catch (error) {
       console.error("Delete customer inquiry error:", error);
@@ -285,6 +333,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user!.id,
       });
       const request = await storage.createQuotationRequest(requestData);
+      
+      // Log creation
+      await storage.logEntityChange(
+        "quotation_request",
+        request.id,
+        "created",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Quotation request created: ${request.customerName} - ${request.description}`
+      );
+      
       res.status(201).json(request);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -296,13 +358,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/quotation-requests/:id", authenticateToken, async (req, res) => {
+  app.put("/api/quotation-requests/:id", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const requestData = insertQuotationRequestSchema.parse(req.body);
       const request = await storage.updateQuotationRequest(req.params.id, requestData);
       if (!request) {
         return res.status(404).json({ message: "Quotation request not found" });
       }
+      
+      // Log update
+      await storage.logEntityChange(
+        "quotation_request",
+        req.params.id,
+        "updated",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Quotation request updated: ${request.customerName} - ${request.description}`
+      );
+      
       res.json(request);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -314,12 +390,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/quotation-requests/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/quotation-requests/:id", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
     try {
+      // Get request details for logging before deletion
+      const quotationRequest = await storage.getQuotationRequestById(req.params.id);
+      if (!quotationRequest) {
+        return res.status(404).json({ message: "Quotation request not found" });
+      }
+      
       const deleted = await storage.deleteQuotationRequest(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Quotation request not found" });
       }
+      
+      // Log deletion
+      await storage.logEntityChange(
+        "quotation_request",
+        req.params.id,
+        "deleted",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Quotation request deleted: ${quotationRequest.customerName} - ${quotationRequest.description}`
+      );
+      
       res.status(204).send();
     } catch (error) {
       console.error("Delete quotation request error:", error);
@@ -1128,13 +1224,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/work-orders/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/work-orders/:id", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
+      
+      // Get work order details for logging before deletion
+      const workOrder = await storage.getWorkOrderById(id);
+      if (!workOrder) {
+        return res.status(404).json({ message: "Work order not found" });
+      }
+      
       const success = await storage.deleteWorkOrder(id);
       if (!success) {
         return res.status(404).json({ message: "Work order not found" });
       }
+      
+      // Log deletion
+      await storage.logEntityChange(
+        "work_order",
+        id,
+        "deleted",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Work order deleted: ${workOrder.customerName} - ${workOrder.description}`
+      );
+      
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting work order:", error);
@@ -1153,10 +1270,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/tickets", authenticateToken, async (req, res) => {
+  app.post("/api/tickets", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const validatedData = insertTicketSchema.parse(req.body);
       const ticket = await storage.createTicket(validatedData);
+      
+      // Log creation
+      await storage.logEntityChange(
+        "ticket",
+        ticket.id,
+        "created",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Ticket created: ${ticket.title}`
+      );
       
       // TODO: Send email notification if assigned to a user
       if (ticket.assignedUserId) {
@@ -1195,13 +1325,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tickets/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/tickets/:id", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
+      
+      // Get ticket details for logging before deletion
+      const ticket = await storage.getTicketById(id);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
       const success = await storage.deleteTicket(id);
       if (!success) {
         return res.status(404).json({ message: "Ticket not found" });
       }
+      
+      // Log deletion
+      await storage.logEntityChange(
+        "ticket",
+        id,
+        "deleted",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Ticket deleted: ${ticket.title}`
+      );
+      
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting ticket:", error);
@@ -1234,10 +1385,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/call-logs", authenticateToken, async (req, res) => {
+  app.post("/api/call-logs", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
       const callLogData = req.body;
       const callLog = await storage.createCallLog(callLogData);
+      
+      // Log creation
+      await storage.logEntityChange(
+        "call_log",
+        callLog.id,
+        "created",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Call log created: ${callLog.customerName} - ${callLog.callType}`
+      );
+      
       res.status(201).json(callLog);
     } catch (error) {
       console.error("Error creating call log:", error);
@@ -1260,13 +1425,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/call-logs/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/call-logs/:id", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
     try {
       const { id } = req.params;
+      
+      // Get call log details for logging before deletion
+      const callLog = await storage.getCallLogById(id);
+      if (!callLog) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+      
       const success = await storage.deleteCallLog(id);
       if (!success) {
         return res.status(404).json({ message: "Call log not found" });
       }
+      
+      // Log deletion
+      await storage.logEntityChange(
+        "call_log",
+        id,
+        "deleted",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Call log deleted: ${callLog.customerName} - ${callLog.callType}`
+      );
+      
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting call log:", error);
@@ -1347,12 +1533,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/tasks/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/tasks/:id", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
     try {
+      // Get task details for logging before deletion
+      const task = await storage.getTaskById(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+      
       const success = await storage.deleteTask(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Task not found" });
       }
+      
+      // Log deletion
+      await storage.logEntityChange(
+        "task",
+        req.params.id,
+        "deleted",
+        null,
+        null,
+        null,
+        req.user!.id,
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        `Task deleted: ${task.title}`
+      );
+      
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting task:", error);
@@ -1524,6 +1730,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching change log:", error);
       res.status(500).json({ message: "Failed to fetch change log" });
+    }
+  });
+
+  // Activity feed route for dashboard
+  app.get('/api/activity-feed', authenticateToken, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const changeLogs = await storage.getChangeLog(limit);
+      res.json(changeLogs);
+    } catch (error) {
+      console.error('Error fetching activity feed:', error);
+      res.status(500).json({ error: 'Failed to fetch activity feed' });
     }
   });
 

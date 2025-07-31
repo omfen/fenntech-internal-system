@@ -603,6 +603,31 @@ export class DatabaseStorage implements IStorage {
     return log;
   }
 
+  // Helper method to log changes for any entity
+  async logEntityChange(
+    entityType: string,
+    entityId: string,
+    action: string,
+    fieldChanged: string | null,
+    oldValue: string | null,
+    newValue: string | null,
+    userId: string,
+    userName: string,
+    description: string
+  ): Promise<void> {
+    await this.createChangeLog({
+      entityType,
+      entityId,
+      action,
+      fieldChanged,
+      oldValue,
+      newValue,
+      userId,
+      userName,
+      description,
+    });
+  }
+
   // Helper method to log changes for work orders
   async logWorkOrderChange(
     workOrderId: string,
