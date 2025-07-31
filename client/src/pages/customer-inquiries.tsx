@@ -38,6 +38,7 @@ import { format } from "date-fns";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
 import ViewOptions from "@/components/view-options";
+import DateTimeInput from "@/components/datetime-input";
 import type { CustomerInquiry, InsertCustomerInquiry } from "@shared/schema";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -49,6 +50,7 @@ export default function CustomerInquiriesPage() {
     customerName: "",
     telephoneNumber: "",
     itemInquiry: "",
+    dueDate: undefined,
   });
 
   // View options state
@@ -208,6 +210,7 @@ export default function CustomerInquiriesPage() {
       customerName: "",
       telephoneNumber: "",
       itemInquiry: "",
+      dueDate: undefined,
     });
   };
 
@@ -226,6 +229,7 @@ export default function CustomerInquiriesPage() {
       customerName: inquiry.customerName,
       telephoneNumber: inquiry.telephoneNumber,
       itemInquiry: inquiry.itemInquiry,
+      dueDate: inquiry.dueDate,
     });
     setIsFormOpen(true);
   };
@@ -376,6 +380,17 @@ export default function CustomerInquiriesPage() {
                     required
                     rows={3}
                     data-testid="input-item-inquiry"
+                  />
+                </div>
+
+                <div>
+                  <DateTimeInput
+                    value={formData.dueDate ? (typeof formData.dueDate === 'string' ? formData.dueDate : formData.dueDate.toISOString().slice(0, 16)) : ""}
+                    onChange={(value) => setFormData({ ...formData, dueDate: value ? new Date(value) : undefined })}
+                    label="Due Date"
+                    testId="input-due-date"
+                    includeTime={true}
+                    defaultIncludeTime={false}
                   />
                 </div>
                 

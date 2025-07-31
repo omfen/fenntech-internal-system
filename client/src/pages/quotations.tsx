@@ -20,6 +20,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type { Quotation, Client, LineItem } from '@shared/schema';
 import { format, addDays } from 'date-fns';
+import DateTimeInput from '@/components/datetime-input';
 
 const lineItemSchema = z.object({
   id: z.string(),
@@ -516,9 +517,15 @@ export default function Quotations() {
                     name="quoteDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Quote Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-quote-date" />
+                          <DateTimeInput
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            label="Quote Date"
+                            testId="input-quote-date"
+                            includeTime={true}
+                            defaultIncludeTime={false}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -530,9 +537,15 @@ export default function Quotations() {
                     name="expirationDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Expiration Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-expiration-date" />
+                          <DateTimeInput
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            label="Expiration Date"
+                            testId="input-expiration-date"
+                            includeTime={true}
+                            defaultIncludeTime={false}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

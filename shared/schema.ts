@@ -156,6 +156,13 @@ export const taskLogs = pgTable("task_logs", {
   metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
 });
 
+// Helper function to transform date/datetime strings
+const transformDateTime = (val: string | undefined) => {
+  if (!val) return undefined;
+  const date = new Date(val);
+  return isNaN(date.getTime()) ? undefined : date;
+};
+
 // Zod schemas for tasks
 export const insertTaskSchema = createInsertSchema(tasks, {
   title: z.string().min(1, "Title is required").max(255, "Title too long"),
@@ -163,7 +170,7 @@ export const insertTaskSchema = createInsertSchema(tasks, {
   urgencyLevel: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
   status: z.enum(["pending", "in_progress", "completed", "cancelled"]).default("pending"),
   priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
-  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  dueDate: z.string().optional().transform(transformDateTime),
   tags: z.array(z.string()).default([]),
   notes: z.string().optional(),
 }).omit({
@@ -311,7 +318,7 @@ export type InsertChangeLog = typeof changeLog.$inferInsert;
 
 // Validation schemas
 export const insertCustomerInquirySchema = createInsertSchema(customerInquiries, {
-  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  dueDate: z.string().optional().transform(transformDateTime),
 }).omit({
   id: true,
   createdAt: true,
@@ -319,7 +326,7 @@ export const insertCustomerInquirySchema = createInsertSchema(customerInquiries,
 });
 
 export const insertQuotationRequestSchema = createInsertSchema(quotationRequests, {
-  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  dueDate: z.string().optional().transform(transformDateTime),
 }).omit({
   id: true,
   createdAt: true,
@@ -327,7 +334,7 @@ export const insertQuotationRequestSchema = createInsertSchema(quotationRequests
 });
 
 export const insertWorkOrderSchema = createInsertSchema(workOrders, {
-  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  dueDate: z.string().optional().transform(transformDateTime),
 }).omit({
   id: true,
   createdAt: true,
@@ -335,14 +342,16 @@ export const insertWorkOrderSchema = createInsertSchema(workOrders, {
 });
 
 export const insertTicketSchema = createInsertSchema(tickets, {
-  dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  dueDate: z.string().optional().transform(transformDateTime),
 }).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertCallLogSchema = createInsertSchema(callLogs).omit({
+export const insertCallLogSchema = createInsertSchema(callLogs, {
+  followUpDate: z.string().optional().transform(transformDateTime),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

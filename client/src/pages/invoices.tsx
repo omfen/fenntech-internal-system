@@ -19,6 +19,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import type { Invoice, Client, Quotation, LineItem } from '@shared/schema';
 import { format, addDays } from 'date-fns';
+import DateTimeInput from '@/components/datetime-input';
 
 const lineItemSchema = z.object({
   id: z.string(),
@@ -639,9 +640,15 @@ export default function Invoices() {
                     name="invoiceDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Invoice Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-invoice-date" />
+                          <DateTimeInput
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            label="Invoice Date"
+                            testId="input-invoice-date"
+                            includeTime={true}
+                            defaultIncludeTime={false}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -653,9 +660,15 @@ export default function Invoices() {
                     name="dueDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Due Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} data-testid="input-due-date" />
+                          <DateTimeInput
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            label="Due Date"
+                            testId="input-due-date"
+                            includeTime={true}
+                            defaultIncludeTime={false}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

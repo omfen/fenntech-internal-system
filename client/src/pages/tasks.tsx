@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
+import DateTimeInput from "@/components/datetime-input";
 
 // Form interface that matches what react-hook-form expects
 interface TaskFormData {
@@ -174,7 +175,7 @@ export default function Tasks() {
       priority: task.priority as any,
       status: task.status as any,
       assignedUserId: task.assignedUserId || "unassigned",
-      dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+      dueDate: task.dueDate ? (task.dueDate.includes('T') ? task.dueDate.slice(0, 16) : task.dueDate.slice(0, 10)) : "",
       tags: task.tags || [],
       notes: task.notes || "",
     });
@@ -393,16 +394,14 @@ export default function Tasks() {
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Due Date</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          value={typeof field.value === 'string' ? field.value : (field.value ? format(new Date(field.value), "yyyy-MM-dd") : "")} 
+                        <DateTimeInput
+                          value={field.value || ""}
                           onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                          data-testid="input-due-date" 
+                          label="Due Date"
+                          testId="input-due-date"
+                          includeTime={true}
+                          defaultIncludeTime={false}
                         />
                       </FormControl>
                       <FormMessage />
@@ -514,7 +513,7 @@ export default function Tasks() {
                   {task.dueDate && (
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                      <span>Due: {format(task.dueDate, "MMM dd, yyyy")}</span>
+                      <span>Due: {format(new Date(task.dueDate), task.dueDate.includes('T') ? "MMM dd, yyyy 'at' h:mm a" : "MMM dd, yyyy")}</span>
                     </div>
                   )}
                   

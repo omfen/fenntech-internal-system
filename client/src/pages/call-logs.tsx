@@ -15,6 +15,7 @@ import { Phone, Plus, Edit, Trash2, PhoneCall, PhoneOutgoing, Clock } from "luci
 import Header from "@/components/header";
 import Navigation from "@/components/navigation";
 import ViewOptions from "@/components/view-options";
+import DateTimeInput from "@/components/datetime-input";
 import { apiRequest } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { insertCallLogSchema, type CallLog, type InsertCallLog, callTypeLevels, callPurposeLevels, callOutcomeLevels, callStatusLevels } from "@shared/schema";
@@ -30,6 +31,7 @@ const formSchema = insertCallLogSchema.extend({
   duration: z.string().optional(),
   outcome: z.string().optional(),
   status: z.string().default("pending"),
+  followUpDate: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -104,6 +106,7 @@ export default function CallLogsPage() {
       duration: "",
       outcome: "answered",
       status: "pending",
+      followUpDate: "",
     },
   });
 
@@ -199,6 +202,7 @@ export default function CallLogsPage() {
       outcome: callLog.outcome || "answered",
       status: callLog.status || "pending",
       assignedUserId: callLog.assignedUserId || undefined,
+      followUpDate: callLog.followUpDate ? (callLog.followUpDate.includes('T') ? callLog.followUpDate.slice(0, 16) : callLog.followUpDate.slice(0, 10)) : "",
     });
     setIsCreateOpen(true);
   };
@@ -502,6 +506,26 @@ export default function CallLogsPage() {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="followUpDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <DateTimeInput
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            label="Follow-up Date (Optional)"
+                            testId="input-follow-up-date"
+                            includeTime={true}
+                            defaultIncludeTime={false}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="flex justify-end space-x-3">
                     <Button
                       type="button"
@@ -545,7 +569,16 @@ export default function CallLogsPage() {
           sortOrder={sortOrder}
           onSortOrderChange={setSortOrder}
           sortOptions={sortOptions}
-          onExport={handleExport}
+          onExport={() => filteredCallLogs.map((log: CallLog) => ({
+            customer: log.customerName,
+            phone: log.phoneNumber,
+            type: log.callType,
+            purpose: log.callPurpose,
+            duration: log.duration || '',
+            outcome: log.outcome || '',
+            notes: log.notes || '',
+            created: log.createdAt ? new Date(log.createdAt).toISOString().split('T')[0] : '',
+          }))}
           exportFilename="call_logs"
         />
 
