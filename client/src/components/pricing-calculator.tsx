@@ -208,7 +208,7 @@ export default function PricingCalculator({ exchangeRate }: PricingCalculatorPro
         <CardTitle className="text-lg sm:text-xl font-semibold text-gray-900">
           Intcomex Pricing Calculator
         </CardTitle>
-        <p className="text-xs sm:text-sm text-gray-600">Upload invoice and calculate selling prices</p>
+        <p className="text-xs sm:text-sm text-gray-600">Upload invoice and calculate selling prices or click add manually to begin pricing</p>
       </CardHeader>
 
       <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
