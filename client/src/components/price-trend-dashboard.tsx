@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, Calendar, DollarSign, Package, ShoppingCart } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, DollarSign, Package, ShoppingCart, BarChart3, PieChart, Activity } from "lucide-react";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, BarChart, Bar, Pie } from 'recharts';
+import { format } from "date-fns";
 import type { PricingSession, AmazonPricingSession } from "@shared/schema";
 
 interface TrendData {
@@ -104,10 +106,10 @@ export default function PriceTrendDashboard() {
 
     const averagePerItem = totalItems > 0 ? totalValue / totalItems : 0;
 
-    // Calculate trend (simplified - comparing first half vs second half of period)
-    const midPoint = Math.floor(sessions.length / 2);
-    const firstHalf = sessions.slice(0, midPoint);
-    const secondHalf = sessions.slice(midPoint);
+    // Calculate trend
+    const midpoint = Math.floor(sessions.length / 2);
+    const firstHalf = sessions.slice(0, midpoint);
+    const secondHalf = sessions.slice(midpoint);
 
     if (firstHalf.length === 0 || secondHalf.length === 0) {
       return {
@@ -159,6 +161,12 @@ export default function PriceTrendDashboard() {
   const recentAmazonSessions = amazonSessions
     .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
     .slice(0, 5);
+
+  // Pie chart data
+  const pieData = [
+    { name: 'Intcomex', value: intcomexStats.totalValue, fill: '#3b82f6' },
+    { name: 'Amazon', value: amazonStats.totalValue, fill: '#f97316' }
+  ];
 
   if (isLoading) {
     return (
@@ -286,97 +294,223 @@ export default function PriceTrendDashboard() {
         </Card>
       </div>
 
-      {/* Recent Sessions */}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* Price Trend Chart */}
+        <Card className="col-span-1 lg:col-span-2" data-testid="price-trend-chart">
+          <CardHeader className="pb-2 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-lg">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
+              Price Trends Over Time
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="h-48 sm:h-64 lg:h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={(value) => format(new Date(value), 'MMM dd')}
+                    tick={{ fontSize: 10 }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+                  />
+                  <Tooltip 
+                    formatter={(value: number, name) => [
+                      `$${value.toLocaleString()} JMD`, 
+                      name === 'intcomexValue' ? 'Intcomex' : 'Amazon'
+                    ]}
+                    labelFormatter={(label) => format(new Date(label), 'PPP')}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="intcomexValue" 
+                    stackId="1"
+                    stroke="#3b82f6" 
+                    fill="#3b82f6" 
+                    fillOpacity={0.6}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="amazonValue" 
+                    stackId="1"
+                    stroke="#f97316" 
+                    fill="#f97316" 
+                    fillOpacity={0.6}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Volume Distribution Chart */}
+        <Card data-testid="volume-distribution-chart">
+          <CardHeader className="pb-2 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-lg">
+              <PieChart className="h-4 w-4 sm:h-5 sm:w-5" />
+              Volume Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="h-48 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Tooltip 
+                    formatter={(value: number, name) => [
+                      `$${value.toLocaleString()} JMD`, 
+                      name
+                    ]}
+                  />
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={60}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex justify-center gap-4 sm:gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="text-xs sm:text-sm">Intcomex</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                <span className="text-xs sm:text-sm">Amazon</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Daily Activity Chart */}
+        <Card data-testid="daily-activity-chart">
+          <CardHeader className="pb-2 sm:pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm sm:text-lg">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
+              Daily Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="h-48 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={(value) => format(new Date(value), 'dd')}
+                    tick={{ fontSize: 10 }}
+                  />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip 
+                    formatter={(value: number, name) => [
+                      `${value} sessions`, 
+                      name === 'intcomexCount' ? 'Intcomex' : 'Amazon'
+                    ]}
+                    labelFormatter={(label) => format(new Date(label), 'PPP')}
+                  />
+                  <Bar dataKey="intcomexCount" fill="#3b82f6" />
+                  <Bar dataKey="amazonCount" fill="#f97316" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Sessions Tabs */}
       <Tabs defaultValue="intcomex" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="intcomex" className="text-xs sm:text-sm" data-testid="tab-intcomex">
-            Recent Intcomex
-          </TabsTrigger>
-          <TabsTrigger value="amazon" className="text-xs sm:text-sm" data-testid="tab-amazon">
-            Recent Amazon
-          </TabsTrigger>
+          <TabsTrigger value="intcomex" className="text-xs sm:text-sm">Recent Intcomex</TabsTrigger>
+          <TabsTrigger value="amazon" className="text-xs sm:text-sm">Recent Amazon</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="intcomex" className="space-y-3">
+        
+        <TabsContent value="intcomex" className="mt-4 sm:mt-6">
           <Card>
-            <CardHeader className="p-3 sm:p-4">
-              <CardTitle className="text-sm sm:text-base">Recent Intcomex Sessions</CardTitle>
+            <CardHeader className="pb-2 sm:pb-4">
+              <CardTitle className="text-sm sm:text-lg">Recent Intcomex Sessions</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 sm:p-4 space-y-3">
+            <CardContent className="pt-0">
               {recentIntcomexSessions.length === 0 ? (
-                <p className="text-center text-gray-500 text-sm py-4">No Intcomex sessions yet</p>
+                <div className="text-center py-8 text-gray-500">
+                  <Package className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm sm:text-base">No Intcomex sessions yet</p>
+                </div>
               ) : (
-                recentIntcomexSessions.map((session) => {
-                  const items = session.items as any[];
-                  const itemCount = items?.length || 0;
-                  const totalValue = parseFloat(session.totalValue);
-                  
-                  return (
-                    <div key={session.id} className="border rounded-lg p-3 space-y-2" data-testid={`intcomex-session-${session.id}`}>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="text-xs sm:text-sm font-medium">
-                            {session.invoiceNumber || "No Invoice #"}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(session.createdAt!).toLocaleDateString()}
-                          </div>
+                <div className="space-y-3 sm:space-y-4">
+                  {recentIntcomexSessions.map((session) => (
+                    <div key={session.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg gap-2 sm:gap-0">
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                          <span className="font-medium text-sm sm:text-base">#{session.invoiceNumber}</span>
+                          <Badge variant="outline" className="w-fit text-xs">
+                            {(session.items as any[]).length} items
+                          </Badge>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {itemCount} items
-                        </Badge>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                          {format(new Date(session.createdAt!), 'PPP')}
+                        </p>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Total Value:</span>
-                        <span className="text-sm font-bold text-blue-600">
-                          ${totalValue.toLocaleString()} JMD
-                        </span>
+                      <div className="text-right">
+                        <p className="font-bold text-sm sm:text-lg">${parseFloat(session.totalValue).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">JMD</p>
                       </div>
                     </div>
-                  );
-                })
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="amazon" className="space-y-3">
+        <TabsContent value="amazon" className="mt-4 sm:mt-6">
           <Card>
-            <CardHeader className="p-3 sm:p-4">
-              <CardTitle className="text-sm sm:text-base">Recent Amazon Sessions</CardTitle>
+            <CardHeader className="pb-2 sm:pb-4">
+              <CardTitle className="text-sm sm:text-lg">Recent Amazon Sessions</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 sm:p-4 space-y-3">
+            <CardContent className="pt-0">
               {recentAmazonSessions.length === 0 ? (
-                <p className="text-center text-gray-500 text-sm py-4">No Amazon sessions yet</p>
+                <div className="text-center py-8 text-gray-500">
+                  <ShoppingCart className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm sm:text-base">No Amazon sessions yet</p>
+                </div>
               ) : (
-                recentAmazonSessions.map((session) => {
-                  const totalValue = parseFloat(session.sellingPriceJmd);
-                  const markup = parseFloat(session.markupPercentage);
-                  
-                  return (
-                    <div key={session.id} className="border rounded-lg p-3 space-y-2" data-testid={`amazon-session-${session.id}`}>
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="text-xs sm:text-sm font-medium break-words">
-                            {session.productName}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(session.createdAt!).toLocaleDateString()}
+                <div className="space-y-3 sm:space-y-4">
+                  {recentAmazonSessions.map((session) => (
+                    <div key={session.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg gap-2 sm:gap-0">
+                      <div className="flex-1">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium text-sm sm:text-base line-clamp-2">{session.productName}</span>
+                          <div className="flex gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              ${session.costUsd} USD
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {session.markupPercentage}% markup
+                            </Badge>
                           </div>
                         </div>
-                        <Badge variant="secondary" className="text-xs">
-                          {markup.toFixed(0)}% markup
-                        </Badge>
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                          {format(new Date(session.createdAt!), 'PPP')}
+                        </p>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-600">Final Price:</span>
-                        <span className="text-sm font-bold text-orange-600">
-                          ${totalValue.toLocaleString()} JMD
-                        </span>
+                      <div className="text-right">
+                        <p className="font-bold text-sm sm:text-lg">${parseFloat(session.sellingPriceJmd).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">JMD</p>
                       </div>
                     </div>
-                  );
-                })
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
