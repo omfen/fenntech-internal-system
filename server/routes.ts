@@ -525,6 +525,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: 'Amazon Basics Neoprene Dumbbell Hand Weights - 8 Pound Pair',
           price: 69.99
         },
+        'B0BYYR57GQ': {
+          name: 'Amazon Product B0BYYR57GQ - Please enter product name and cost',
+          price: 0
+        },
         // Add more known products as needed
       };
 
@@ -533,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const product = amazonProducts[asin];
         productName = product.name;
         costUsd = product.price;
-        extractedSuccessfully = true;
+        extractedSuccessfully = product.price > 0; // Only mark as successful if we have a price
       }
       // Handle other ASINs by extracting title from URL if possible
       else if (asin) {
@@ -545,17 +549,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // /Product-Name-Keywords/dp/ASIN or /dp/ASIN/Product-Name-Keywords
         for (let i = 0; i < urlParts.length; i++) {
           const part = urlParts[i];
-          if (part.includes(asin)) {
-            // Check parts before and after ASIN
-            if (i > 0 && urlParts[i - 1].length > 3 && !urlParts[i - 1].includes('amazon') && !urlParts[i - 1].includes('dp')) {
+          if (part === 'dp') {
+            // Found dp, check the part before it for product title
+            if (i > 0 && urlParts[i - 1].length > 5 && 
+                !urlParts[i - 1].includes('amazon') && 
+                !urlParts[i - 1].includes('www') &&
+                urlParts[i - 1].includes('-')) {
               titlePart = urlParts[i - 1];
-            } else if (i + 1 < urlParts.length && urlParts[i + 1].length > 3) {
-              titlePart = urlParts[i + 1];
+              break;
             }
-            break;
-          } else if (part.length > 10 && part.includes('-') && !part.includes('amazon') && !part.includes('dp') && !part.includes('ref')) {
-            // Look for long parts with dashes (typical Amazon product URLs)
+          } else if (part.length > 15 && part.includes('-') && 
+                     !part.includes('amazon') && 
+                     !part.includes('dp') && 
+                     !part.includes('ref') &&
+                     !part.includes('=') &&
+                     !part.includes('?') &&
+                     !part.includes('gp')) {
+            // Look for long parts with dashes that look like product titles
             titlePart = part;
+            break;
           }
         }
 

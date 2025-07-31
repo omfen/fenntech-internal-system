@@ -81,7 +81,12 @@ export function AmazonPricing() {
       // Populate the form with extracted data
       pricingForm.setValue('amazonUrl', data.amazonUrl || '');
       pricingForm.setValue('productName', data.productName || '');
-      pricingForm.setValue('costUsd', data.costUsd || 0);
+      // Only set cost if it's greater than 0, otherwise let user enter manually
+      if (data.costUsd > 0) {
+        pricingForm.setValue('costUsd', data.costUsd);
+      } else {
+        pricingForm.setValue('costUsd', ''); // Use empty string for manual entry
+      }
       
       // Set appropriate markup based on cost
       const newMarkup = (data.costUsd || 0) > 100 ? 120 : 80;
@@ -319,7 +324,7 @@ export function AmazonPricing() {
                             type="number" 
                             step="0.01" 
                             {...field}
-                            value={field.value || 0}
+                            value={field.value ?? ''}
                             onChange={(e) => handleCostChange(parseFloat(e.target.value) || 0)}
                             data-testid="input-cost-usd"
                           />
@@ -347,7 +352,7 @@ export function AmazonPricing() {
                             type="number" 
                             step="1" 
                             {...field}
-                            value={field.value || 80}
+                            value={field.value ?? ''}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 80)}
                             data-testid="input-markup-percentage"
                           />
