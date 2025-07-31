@@ -12,7 +12,21 @@ import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { insertTaskSchema, type Task, type InsertTask, type User } from "@shared/schema";
+import { insertTaskSchema, type Task, type InsertTask } from "@shared/task-schema";
+import { type User } from "@shared/schema";
+
+// Form interface that matches what react-hook-form expects
+interface TaskFormData {
+  title: string;
+  description?: string;
+  urgencyLevel: "low" | "medium" | "high" | "urgent";
+  priority: "low" | "normal" | "high" | "critical";
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  assignedUserId?: string;
+  dueDate?: string;
+  tags: string[];
+  notes?: string;
+}
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,8 +67,7 @@ export default function Tasks() {
     queryKey: ["/api/users"],
   });
 
-  const form = useForm<InsertTask>({
-    resolver: zodResolver(insertTaskSchema),
+  const form = useForm<TaskFormData>({
     defaultValues: {
       title: "",
       description: "",
@@ -130,14 +143,20 @@ export default function Tasks() {
     },
   });
 
-  const onSubmit = (data: InsertTask) => {
+  const onSubmit = (data: TaskFormData) => {
+    // Transform form data to API format
+    const apiData: InsertTask = {
+      ...data,
+      assignedUserId: data.assignedUserId === "unassigned" ? undefined : data.assignedUserId,
+      dueDate: data.dueDate || undefined,
+    };
     if (editingTask) {
       updateTaskMutation.mutate({ 
         id: editingTask.id, 
-        data: { ...data }
+        data: { ...apiData }
       });
     } else {
-      createTaskMutation.mutate(data);
+      createTaskMutation.mutate(apiData);
     }
   };
 

@@ -57,6 +57,11 @@ export const insertTaskSchema = createInsertSchema(tasks, {
   dueDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
   tags: z.array(z.string()).default([]),
   notes: z.string().optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
 });
 
 export const updateTaskSchema = insertTaskSchema.partial();
