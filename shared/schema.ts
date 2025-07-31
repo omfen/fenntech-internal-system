@@ -490,8 +490,8 @@ export const insertClientSchema = createInsertSchema(clients).omit({
 });
 
 export const insertQuotationSchema = createInsertSchema(quotations, {
-  quoteDate: z.string().transform((val) => new Date(val)),
-  expirationDate: z.string().transform((val) => new Date(val)),
+  quoteDate: z.string(),
+  expirationDate: z.string(),
 }).omit({
   id: true,
   createdAt: true,

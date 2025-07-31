@@ -790,14 +790,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createQuotation(quotationData: InsertQuotation): Promise<Quotation> {
-    const [quotation] = await db.insert(quotations).values(quotationData).returning();
+    // Convert string dates to Date objects for database insertion
+    const processedData = {
+      ...quotationData,
+      quoteDate: new Date(quotationData.quoteDate),
+      expirationDate: new Date(quotationData.expirationDate),
+    };
+    const [quotation] = await db.insert(quotations).values(processedData).returning();
     return quotation;
   }
 
   async updateQuotation(id: string, quotationData: Partial<InsertQuotation>): Promise<Quotation | undefined> {
+    // Convert string dates to Date objects if they exist
+    const processedData: any = { ...quotationData };
+    if (quotationData.quoteDate) {
+      processedData.quoteDate = new Date(quotationData.quoteDate);
+    }
+    if (quotationData.expirationDate) {
+      processedData.expirationDate = new Date(quotationData.expirationDate);
+    }
+    
     const [updated] = await db
       .update(quotations)
-      .set({ ...quotationData, updatedAt: new Date() })
+      .set({ ...processedData, updatedAt: new Date() })
       .where(eq(quotations.id, id))
       .returning();
     return updated || undefined;
