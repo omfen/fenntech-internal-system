@@ -205,13 +205,10 @@ export default function PricingHistory() {
   };
 
   const handleEdit = (session: PricingSession) => {
-    console.log('Edit session data:', session);
     setSelectedSession(session);
     const items = session.items as any[] || [];
-    console.log('Session items:', items);
     
     const editableItems = items.map((item, index) => {
-      console.log(`Item ${index}:`, item);
       return {
         id: item.id || `item-${index}`,
         description: item.description || item.partNumber || item.name || '',
@@ -221,15 +218,24 @@ export default function PricingHistory() {
       };
     });
     
-    console.log('Editable items:', editableItems);
-    console.log('Exchange rate:', session.exchangeRate);
-    console.log('Rounding option:', session.roundingOption);
-    
     // Reset form and set all values
     editForm.reset();
     editForm.setValue('items', editableItems);
     editForm.setValue('exchangeRate', parseFloat(session.exchangeRate || '162'));
-    editForm.setValue('roundingOption', session.roundingOption || 'none');
+    // Convert numeric rounding option to string
+    let roundingOption = 'none';
+    if (session.roundingOption === 100) {
+      roundingOption = 'nearest_100';
+    } else if (session.roundingOption === 50) {
+      roundingOption = 'nearest_50';
+    } else if (session.roundingOption === 10) {
+      roundingOption = 'nearest_10';
+    } else if (session.roundingOption === 5) {
+      roundingOption = 'nearest_5';
+    } else if (typeof session.roundingOption === 'string') {
+      roundingOption = session.roundingOption;
+    }
+    editForm.setValue('roundingOption', roundingOption);
     editForm.setValue('notes', '');
     setShowEditDialog(true);
   };
