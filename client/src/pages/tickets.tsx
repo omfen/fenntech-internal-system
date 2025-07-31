@@ -97,9 +97,10 @@ export default function TicketsPage() {
       });
     },
     onError: (error) => {
+      console.error("Ticket creation error:", error);
       toast({
         title: "Error",
-        description: "Failed to create ticket",
+        description: error.message || "Failed to create ticket",
         variant: "destructive",
       });
     },
@@ -213,8 +214,8 @@ export default function TicketsPage() {
     .filter((ticket: TicketType) =>
       ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.priority.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ticket.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ticket.priority || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ticket.status || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       getUserName(ticket.assignedUserId).toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a: TicketType, b: TicketType) => {

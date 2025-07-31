@@ -21,6 +21,8 @@ const companySettingsSchema = z.object({
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   url: z.string().url('Invalid URL').optional().or(z.literal('')),
   address: z.string().optional(),
+  invoiceFooter: z.string().optional(),
+  quotationFooter: z.string().optional(),
 });
 
 type CompanySettingsForm = z.infer<typeof companySettingsSchema>;
@@ -41,6 +43,8 @@ export default function CompanySettingsPage() {
       email: settings?.email || '',
       url: settings?.url || '',
       address: settings?.address || '',
+      invoiceFooter: settings?.invoiceFooter || '',
+      quotationFooter: settings?.quotationFooter || '',
     },
   });
 
@@ -53,6 +57,8 @@ export default function CompanySettingsPage() {
         email: settings.email || '',
         url: settings.url || '',
         address: settings.address || '',
+        invoiceFooter: settings.invoiceFooter || '',
+        quotationFooter: settings.quotationFooter || '',
       });
     }
   }, [settings, form]);
@@ -231,6 +237,46 @@ export default function CompanySettingsPage() {
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="invoiceFooter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Footer</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Enter invoice footer text (e.g., payment terms, bank details)" 
+                            {...field} 
+                            data-testid="input-invoice-footer"
+                            rows={4}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="quotationFooter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quotation Footer</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Enter quotation footer text (e.g., terms and conditions)" 
+                            {...field} 
+                            data-testid="input-quotation-footer"
+                            rows={4}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <div className="flex justify-end pt-6">
                   <Button

@@ -397,6 +397,8 @@ export const companySettings = pgTable("company_settings", {
   email: varchar("email"),
   url: varchar("url"),
   address: text("address"),
+  invoiceFooter: text("invoice_footer"),
+  quotationFooter: text("quotation_footer"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
