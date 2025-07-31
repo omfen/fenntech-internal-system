@@ -148,7 +148,7 @@ export default function Tasks() {
       priority: task.priority as any,
       status: task.status as any,
       assignedUserId: task.assignedUserId || "",
-      dueDate: task.dueDate ? format(task.dueDate, "yyyy-MM-dd") : "",
+      dueDate: task.dueDate ? (task.dueDate instanceof Date ? format(task.dueDate, "yyyy-MM-dd") : task.dueDate.toString().split('T')[0]) : "",
       tags: task.tags || [],
       notes: task.notes || "",
     });
@@ -347,8 +347,11 @@ export default function Tasks() {
                       <FormControl>
                         <Input 
                           type="date" 
-                          {...field} 
                           value={field.value || ""} 
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                           data-testid="input-due-date" 
                         />
                       </FormControl>

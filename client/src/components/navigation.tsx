@@ -25,7 +25,6 @@ export default function Navigation() {
     { path: "/work-orders", label: "Work Orders", icon: Wrench },
     { path: "/call-logs", label: "Call Logs", icon: PhoneCall },
     { path: "/tickets", label: "Tickets", icon: Ticket },
-    { path: "/tasks", label: "Tasks", icon: CheckSquare },
   ];
 
   const isCustomersActive = customerItems.some(item => location === item.path);
@@ -48,6 +47,18 @@ export default function Navigation() {
               >
                 <BarChart3 className="h-4 w-4" />
                 <span className="hidden sm:inline">{dashboardItem.label}</span>
+              </Button>
+            </Link>
+
+            {/* Tasks */}
+            <Link href="/tasks">
+              <Button
+                variant={isActive("/tasks") ? "default" : "ghost"}
+                className="flex items-center space-x-2"
+                data-testid="nav-tasks"
+              >
+                <CheckSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Tasks</span>
               </Button>
             </Link>
 
