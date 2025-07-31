@@ -55,7 +55,7 @@ export default function CallLogsPage() {
 
   // Export function
   const handleExport = (format: 'csv' | 'json') => {
-    const dataToExport = filteredCallLogs.map(log => ({
+    const dataToExport = callLogs.map((log: CallLog) => ({
       customer: log.customerName,
       phone: log.phoneNumber,
       type: log.callType,
@@ -63,7 +63,7 @@ export default function CallLogsPage() {
       duration: log.duration || '',
       outcome: log.outcome || '',
       notes: log.notes || '',
-      created: log.createdAt ? format(new Date(log.createdAt), "yyyy-MM-dd") : '',
+      created: log.createdAt ? new Date(log.createdAt).toISOString().split('T')[0] : '',
     }));
 
     if (format === 'json') {
@@ -105,7 +105,7 @@ export default function CallLogsPage() {
     },
   });
 
-  const { data: callLogs = [], isLoading } = useQuery({
+  const { data: callLogs = [], isLoading } = useQuery<CallLog[]>({
     queryKey: ["/api/call-logs"],
   });
 
@@ -115,7 +115,7 @@ export default function CallLogsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertCallLog) => {
-      return await apiRequest("/api/call-logs", "POST", data);
+      return await apiRequest("POST", "/api/call-logs", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
@@ -137,7 +137,7 @@ export default function CallLogsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<CallLog> }) => {
-      return await apiRequest(`/api/call-logs/${id}`, "PATCH", data);
+      return await apiRequest("PATCH", `/api/call-logs/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
@@ -159,7 +159,7 @@ export default function CallLogsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/call-logs/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/call-logs/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/call-logs"] });
@@ -244,7 +244,7 @@ export default function CallLogsPage() {
 
   // Filter and sort call logs
   const filteredCallLogs = callLogs
-    .filter((log: any) =>
+    .filter((log: CallLog) =>
       log.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.phoneNumber.includes(searchTerm) ||
       log.callType.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -252,7 +252,7 @@ export default function CallLogsPage() {
       (log.notes || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.outcome || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
-    .sort((a: any, b: any) => {
+    .sort((a: CallLog, b: CallLog) => {
       let valueA: any, valueB: any;
       
       switch (sortBy) {
