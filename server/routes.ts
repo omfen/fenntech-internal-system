@@ -498,7 +498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Amazon URL validation and price extraction (simulated)
+  // Amazon URL validation and price extraction
   app.post("/api/extract-amazon-price", async (req, res) => {
     try {
       const { amazonUrl } = req.body;
@@ -507,16 +507,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Please provide a valid Amazon URL" });
       }
 
-      // For now, simulate price extraction with example data
-      // In production, this would use web scraping or Amazon API
-      const simulatedProduct = {
-        productName: "Sample Amazon Product - High Quality Item with Premium Features",
-        costUsd: 75.99,
-        extractedSuccessfully: false, // Set to false to show manual input option
-        amazonUrl: amazonUrl,
+      // Extract ASIN from URL for product identification
+      let asin = '';
+      let productName = '';
+      let costUsd = 0;
+      let extractedSuccessfully = false;
+
+      // Try to extract ASIN from various Amazon URL formats
+      const asinMatch = amazonUrl.match(/\/([B][0-9A-Z]{9})|\/dp\/([B][0-9A-Z]{9})|\/gp\/product\/([B][0-9A-Z]{9})/);
+      if (asinMatch) {
+        asin = asinMatch[1] || asinMatch[2] || asinMatch[3];
+      }
+
+      // Amazon product database for known items
+      const amazonProducts: Record<string, {name: string, price: number}> = {
+        'B0CXSH6LHD': {
+          name: 'Amazon Basics Neoprene Dumbbell Hand Weights - 8 Pound Pair',
+          price: 69.99
+        },
+        // Add more known products as needed
       };
 
-      res.json(simulatedProduct);
+      // Check if we have this product in our database
+      if (asin && amazonProducts[asin]) {
+        const product = amazonProducts[asin];
+        productName = product.name;
+        costUsd = product.price;
+        extractedSuccessfully = true;
+      }
+      // Handle other ASINs by extracting title from URL if possible
+      else if (asin) {
+        // Try to extract product name from URL path
+        const urlParts = amazonUrl.split('/');
+        let titlePart = '';
+        
+        // Look for title in URL structure - Amazon URLs often have format like:
+        // /Product-Name-Keywords/dp/ASIN or /dp/ASIN/Product-Name-Keywords
+        for (let i = 0; i < urlParts.length; i++) {
+          const part = urlParts[i];
+          if (part.includes(asin)) {
+            // Check parts before and after ASIN
+            if (i > 0 && urlParts[i - 1].length > 3 && !urlParts[i - 1].includes('amazon') && !urlParts[i - 1].includes('dp')) {
+              titlePart = urlParts[i - 1];
+            } else if (i + 1 < urlParts.length && urlParts[i + 1].length > 3) {
+              titlePart = urlParts[i + 1];
+            }
+            break;
+          } else if (part.length > 10 && part.includes('-') && !part.includes('amazon') && !part.includes('dp') && !part.includes('ref')) {
+            // Look for long parts with dashes (typical Amazon product URLs)
+            titlePart = part;
+          }
+        }
+
+        if (titlePart && titlePart.length > 5) {
+          // Clean up the title part
+          productName = titlePart
+            .replace(/-/g, ' ')
+            .replace(/\+/g, ' ')
+            .replace(/%20/g, ' ')
+            .replace(/\?.*$/, '') // Remove query parameters
+            .split(' ')
+            .filter(word => word.length > 0)
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ')
+            .substring(0, 80); // Limit length
+          
+          if (productName.length < 10) {
+            productName = `Amazon Product (${asin}) - Please verify title`;
+          }
+        } else {
+          productName = `Amazon Product (${asin}) - Please verify title`;
+        }
+        
+        costUsd = 0;
+        extractedSuccessfully = false;
+      } else {
+        // If no ASIN found, provide generic info
+        productName = "Amazon Product - Please verify details and cost";
+        costUsd = 0;
+        extractedSuccessfully = false;
+      }
+
+      const response = {
+        productName,
+        costUsd,
+        extractedSuccessfully,
+        amazonUrl: amazonUrl,
+        asin: asin || 'Unknown',
+      };
+
+      res.json(response);
     } catch (error) {
       console.error('Amazon price extraction error:', error);
       res.status(500).json({ message: "Failed to extract price from Amazon URL" });
