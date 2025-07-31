@@ -132,7 +132,7 @@ export default function Tasks() {
     if (editingTask) {
       updateTaskMutation.mutate({ 
         id: editingTask.id, 
-        data: { ...data, updatedById: user?.id, updatedByName: `${user?.firstName} ${user?.lastName}` }
+        data: { ...data }
       });
     } else {
       createTaskMutation.mutate(data);
@@ -148,7 +148,7 @@ export default function Tasks() {
       priority: task.priority as any,
       status: task.status as any,
       assignedUserId: task.assignedUserId || "",
-      dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+      dueDate: task.dueDate ? format(task.dueDate, "yyyy-MM-dd") : "",
       tags: task.tags || [],
       notes: task.notes || "",
     });
@@ -159,9 +159,7 @@ export default function Tasks() {
     updateTaskMutation.mutate({ 
       id: taskId, 
       data: { 
-        status: newStatus,
-        updatedById: user?.id,
-        updatedByName: `${user?.firstName} ${user?.lastName}`
+        status: newStatus
       }
     });
   };
@@ -172,9 +170,7 @@ export default function Tasks() {
       id: taskId, 
       data: { 
         assignedUserId: userId,
-        assignedUserName: assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : "",
-        updatedById: user?.id,
-        updatedByName: `${user?.firstName} ${user?.lastName}`
+        assignedUserName: assignedUser ? `${assignedUser.firstName} ${assignedUser.lastName}` : ""
       }
     });
   };
@@ -321,7 +317,7 @@ export default function Tasks() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Assign To</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                           <FormControl>
                             <SelectTrigger data-testid="select-assigned-user">
                               <SelectValue placeholder="Select user" />
@@ -349,7 +345,12 @@ export default function Tasks() {
                     <FormItem>
                       <FormLabel>Due Date</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} data-testid="input-due-date" />
+                        <Input 
+                          type="date" 
+                          {...field} 
+                          value={field.value || ""} 
+                          data-testid="input-due-date" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -460,19 +461,19 @@ export default function Tasks() {
                   {task.dueDate && (
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                      <span>Due: {format(new Date(task.dueDate), "MMM dd, yyyy")}</span>
+                      <span>Due: {format(task.dueDate, "MMM dd, yyyy")}</span>
                     </div>
                   )}
                   
                   <div className="flex items-center">
                     <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                    <span>Created: {format(new Date(task.createdAt), "MMM dd, yyyy")}</span>
+                    <span>Created: {task.createdAt ? format(task.createdAt, "MMM dd, yyyy") : "Unknown"}</span>
                   </div>
                   
                   {task.completedAt && (
                     <div className="flex items-center">
                       <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                      <span>Completed: {format(new Date(task.completedAt), "MMM dd, yyyy")}</span>
+                      <span>Completed: {format(task.completedAt, "MMM dd, yyyy")}</span>
                     </div>
                   )}
                 </div>

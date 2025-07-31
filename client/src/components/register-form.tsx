@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { insertUserSchema, type InsertUser } from "@shared/schema";
 import { UserPlus, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import FennTechLogo from "@assets/FennTech ONLY_1753941339432.png";
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -46,8 +47,10 @@ export function RegisterForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <img src={FennTechLogo} alt="FennTech" className="h-12 w-auto" />
+        </div>
         <CardTitle className="text-2xl font-bold text-gray-900">
-          <UserPlus className="w-8 h-8 mx-auto mb-2 text-blue-600" />
           Create Account
         </CardTitle>
         <p className="text-sm text-gray-600">

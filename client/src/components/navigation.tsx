@@ -1,4 +1,5 @@
 import { Calculator, BarChart3, DollarSign, Users, Phone, FileText, Wrench, Ticket, ChevronDown, PhoneCall, HelpCircle, CheckSquare } from "lucide-react";
+import FennTechLogo from "@assets/FennTech ONLY_1753941339432.png";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,7 +34,11 @@ export default function Navigation() {
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex space-x-8">
+          <div className="flex items-center space-x-8">
+            {/* Logo */}
+            <Link href="/">
+              <img src={FennTechLogo} alt="FennTech" className="h-8 w-auto" />
+            </Link>
             {/* Dashboard */}
             <Link href={dashboardItem.path}>
               <Button

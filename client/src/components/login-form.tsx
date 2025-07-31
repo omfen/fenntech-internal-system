@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { loginSchema, type LoginCredentials } from "@shared/schema";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
+import FennTechLogo from "@assets/FennTech ONLY_1753941339432.png";
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -42,12 +43,14 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <img src={FennTechLogo} alt="FennTech" className="h-12 w-auto" />
+        </div>
         <CardTitle className="text-2xl font-bold text-gray-900">
-          <Lock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-          FennTech Login
+          Welcome Back
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Sign in to access the pricing system
+          Sign in to access FennTech Internal
         </p>
       </CardHeader>
       <CardContent>
