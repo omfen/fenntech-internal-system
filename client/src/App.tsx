@@ -21,6 +21,7 @@ import Clients from "@/pages/clients";
 import CompanySettings from "@/pages/company-settings";
 import Quotations from "@/pages/quotations";
 import Invoices from "@/pages/invoices";
+import Administration from "@/pages/administration";
 
 function AuthenticatedRouter() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -58,6 +59,7 @@ function AuthenticatedRouter() {
       <Route path="/company-settings" component={CompanySettings} />
       <Route path="/quotations" component={Quotations} />
       <Route path="/invoices" component={Invoices} />
+      <Route path="/administration" component={Administration} />
       <Route component={NotFound} />
     </Switch>
   );

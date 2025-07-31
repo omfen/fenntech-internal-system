@@ -784,6 +784,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ usdToJmd: 162.00 });
   });
 
+  // Administration routes - Email Configuration
+  app.get("/api/admin/email-config", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      // Return whether email is configured (without exposing credentials)
+      const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
+      const emailPass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
+      
+      res.json({
+        isConfigured: !!(emailUser && emailPass),
+        emailUser: emailUser || null,
+        smtpHost: "smtp.gmail.com",
+        smtpPort: "587"
+      });
+    } catch (error) {
+      console.error("Get email config error:", error);
+      res.status(500).json({ message: "Failed to get email configuration" });
+    }
+  });
+
+  app.post("/api/admin/email-config", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const configSchema = z.object({
+        emailUser: z.string().email(),
+        emailPass: z.string().min(1),
+        smtpHost: z.string().optional(),
+        smtpPort: z.string().optional(),
+      });
+
+      const config = configSchema.parse(req.body);
+      
+      // In a production environment, you would securely store these credentials
+      // For now, we'll inform the user they need to set environment variables
+      res.json({ 
+        message: "Email configuration received. Please set the following environment variables: EMAIL_USER, EMAIL_PASS",
+        config: {
+          emailUser: config.emailUser,
+          smtpHost: config.smtpHost || "smtp.gmail.com",
+          smtpPort: config.smtpPort || "587"
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid configuration data", errors: error.errors });
+      } else {
+        console.error("Save email config error:", error);
+        res.status(500).json({ message: "Failed to save email configuration" });
+      }
+    }
+  });
+
+  app.post("/api/admin/test-email", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const testSchema = z.object({
+        testEmail: z.string().email(),
+      });
+
+      const { testEmail } = testSchema.parse(req.body);
+      
+      // Check if email is configured
+      const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
+      const emailPass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
+      
+      if (!emailUser || !emailPass) {
+        return res.status(500).json({ 
+          message: "Email service not configured. Please set EMAIL_USER and EMAIL_PASS environment variables." 
+        });
+      }
+
+      const htmlContent = `
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #1976D2;">FennTech Email Test</h2>
+              <p>This is a test email from your FennTech Internal system.</p>
+              <p>If you received this email, your email configuration is working correctly!</p>
+              <p style="margin-top: 30px;">Best regards,<br><strong>FennTech Internal System</strong></p>
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+                <p>This test email was sent on ${new Date().toLocaleString()}.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: emailUser,
+        to: testEmail,
+        subject: "FennTech Email Configuration Test",
+        html: htmlContent,
+      });
+
+      res.json({ message: "Test email sent successfully" });
+    } catch (error) {
+      console.error('Test email error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid test email data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to send test email" });
+      }
+    }
+  });
+
   // Amazon pricing session routes
   app.get("/api/amazon-pricing-sessions", async (req, res) => {
     try {

@@ -197,6 +197,12 @@ export default function Navigation() {
                       Company Settings
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/administration">
+                      <Settings className="h-4 w-4 mr-2" />
+                      System Configuration
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
