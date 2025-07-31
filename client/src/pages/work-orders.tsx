@@ -34,7 +34,14 @@ type FormData = z.infer<typeof formSchema>;
 export default function WorkOrdersPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingWorkOrder, setEditingWorkOrder] = useState<WorkOrder | null>(null);
-  const [filteredWorkOrders, setFilteredWorkOrders] = useState<WorkOrder[]>([]);
+
+  
+  // View options state
+  const [view, setView] = useState<'cards' | 'list'>('cards');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -55,10 +62,7 @@ export default function WorkOrdersPage() {
     queryKey: ["/api/work-orders"],
   });
 
-  // Update filtered work orders when data changes
-  React.useEffect(() => {
-    setFilteredWorkOrders(workOrders);
-  }, [workOrders]);
+
 
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
@@ -191,186 +195,65 @@ export default function WorkOrdersPage() {
     return user ? `${user.firstName} ${user.lastName}` : "Unknown User";
   };
 
-  // Filter and sort functions
-  const handleFilter = (filter: string) => {
-    if (filter === 'all') {
-      setFilteredWorkOrders(workOrders);
-    } else {
-      const filtered = workOrders.filter(wo => wo.status === filter);
-      setFilteredWorkOrders(filtered);
-    }
-  };
 
-  const handleSort = (sort: string) => {
-    let sorted = [...filteredWorkOrders];
-    switch (sort) {
-      case 'newest':
-        sorted.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
-        break;
-      case 'oldest':
-        sorted.sort((a, b) => new Date(a.createdAt!).getTime() - new Date(b.createdAt!).getTime());
-        break;
-      case 'customer':
-        sorted.sort((a, b) => a.customerName.localeCompare(b.customerName));
-        break;
-      case 'status':
-        sorted.sort((a, b) => (a.status || '').localeCompare(b.status || ''));
-        break;
-    }
-    setFilteredWorkOrders(sorted);
-  };
 
-  const handleExport = (format: 'csv' | 'json') => {
-    const exportData = filteredWorkOrders.map(wo => ({
-      id: wo.id,
-      customerName: wo.customerName,
-      telephone: wo.telephone,
-      email: wo.email,
-      itemDescription: wo.itemDescription,
-      issue: wo.issue,
-      status: wo.status,
-      assignedUser: getUserName(wo.assignedUserId),
-      notes: wo.notes,
-      createdAt: wo.createdAt,
-      dueDate: wo.dueDate
-    }));
-
-    if (format === 'csv') {
-      const headers = Object.keys(exportData[0] || {}).join(',');
-      const csvData = exportData.map(row => 
-        Object.values(row).map(value => 
-          `"${String(value || '').replace(/"/g, '""')}"`
-        ).join(',')
-      ).join('\n');
-      
-      const csv = `${headers}\n${csvData}`;
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `work_orders_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } else {
-      const json = JSON.stringify(exportData, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `work_orders_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    }
-  };
-
-  // Status filter options
-  const statusCounts = workOrders.reduce((acc, wo) => {
-    acc[wo.status || 'received'] = (acc[wo.status || 'received'] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const filterOptions = [
-    { label: 'Received', value: 'received', count: statusCounts.received || 0 },
-    { label: 'In Progress', value: 'in_progress', count: statusCounts.in_progress || 0 },
-    { label: 'Testing', value: 'testing', count: statusCounts.testing || 0 },
-    { label: 'Ready for Pickup', value: 'ready_for_pickup', count: statusCounts.ready_for_pickup || 0 },
-    { label: 'Completed', value: 'completed', count: statusCounts.completed || 0 },
-  ];
-
+  // Sort options
   const sortOptions = [
-    { label: 'Newest First', value: 'newest' },
-    { label: 'Oldest First', value: 'oldest' },
-    { label: 'Customer Name', value: 'customer' },
-    { label: 'Status', value: 'status' },
+    { value: 'customerName', label: 'Customer Name' },
+    { value: 'status', label: 'Status' },
+    { value: 'createdAt', label: 'Date Created' },
+    { value: 'dueDate', label: 'Due Date' },
   ];
 
-  // Render functions for ViewOptions
-  const renderCard = (workOrder: WorkOrder) => (
-    <Card key={workOrder.id} className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-lg">{workOrder.customerName}</CardTitle>
-            <p className="text-sm text-gray-600">{workOrder.telephone}</p>
-          </div>
-          {getStatusBadge(workOrder.status || 'received')}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          <p className="text-sm"><strong>Item:</strong> {workOrder.itemDescription}</p>
-          <p className="text-sm"><strong>Issue:</strong> {workOrder.issue}</p>
-          <p className="text-sm"><strong>Assigned:</strong> {getUserName(workOrder.assignedUserId)}</p>
-          {workOrder.notes && (
-            <p className="text-sm"><strong>Notes:</strong> {workOrder.notes}</p>
-          )}
-          <div className="flex justify-between items-center pt-2">
-            <p className="text-xs text-gray-500">
-              Created: {new Date(workOrder.createdAt!).toLocaleDateString()}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEdit(workOrder)}
-                data-testid={`button-edit-${workOrder.id}`}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleDelete(workOrder.id)}
-                data-testid={`button-delete-${workOrder.id}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  // Filter and sort the work orders
+  const filteredAndSortedWorkOrders = React.useMemo(() => {
+    let filtered = workOrders.filter((wo) => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        wo.customerName.toLowerCase().includes(searchLower) ||
+        wo.itemDescription.toLowerCase().includes(searchLower) ||
+        wo.issue.toLowerCase().includes(searchLower) ||
+        wo.telephone.includes(searchTerm) ||
+        (wo.notes && wo.notes.toLowerCase().includes(searchLower)) ||
+        (wo.email && wo.email.toLowerCase().includes(searchLower))
+      );
+    });
 
-  const renderListItem = (workOrder: WorkOrder) => (
-    <Card key={workOrder.id} className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-4">
-            <div className="min-w-0 flex-1">
-              <h3 className="font-medium truncate">{workOrder.customerName}</h3>
-              <p className="text-sm text-gray-600 truncate">{workOrder.itemDescription}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500">{getUserName(workOrder.assignedUserId)}</span>
-              {getStatusBadge(workOrder.status || 'received')}
-              <span className="text-xs text-gray-500">
-                {new Date(workOrder.createdAt!).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 ml-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleEdit(workOrder)}
-            data-testid={`button-edit-${workOrder.id}`}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleDelete(workOrder.id)}
-            data-testid={`button-delete-${workOrder.id}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
+    // Sort the filtered results
+    filtered.sort((a, b) => {
+      let aVal: any, bVal: any;
+      
+      switch (sortBy) {
+        case 'customerName':
+          aVal = a.customerName;
+          bVal = b.customerName;
+          break;
+        case 'status':
+          aVal = a.status || '';
+          bVal = b.status || '';
+          break;
+        case 'createdAt':
+          aVal = new Date(a.createdAt || 0);
+          bVal = new Date(b.createdAt || 0);
+          break;
+        case 'dueDate':
+          aVal = a.dueDate ? new Date(a.dueDate) : new Date(0);
+          bVal = b.dueDate ? new Date(b.dueDate) : new Date(0);
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [workOrders, searchTerm, sortBy, sortOrder]);
+
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -560,20 +443,167 @@ export default function WorkOrdersPage() {
         </div>
 
         <ViewOptions
-          title="Work Orders"
-          data={filteredWorkOrders}
-          renderCard={renderCard}
-          renderListItem={renderListItem}
-          columns={['id', 'customerName', 'telephone', 'email', 'itemDescription', 'issue', 'status', 'assignedUserId', 'notes', 'createdAt', 'dueDate']}
-          onExport={handleExport}
-          filterOptions={filterOptions}
+          view={view}
+          onViewChange={setView}
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          searchPlaceholder="Search work orders..."
+          sortBy={sortBy}
+          onSortByChange={setSortBy}
+          sortOrder={sortOrder}
+          onSortOrderChange={setSortOrder}
           sortOptions={sortOptions}
-          onFilter={handleFilter}
-          onSort={handleSort}
-          showExport={true}
-          showFilter={true}
-          showSort={true}
+          onExport={() => filteredAndSortedWorkOrders.map((wo: WorkOrder) => ({
+            customerName: wo.customerName,
+            telephone: wo.telephone,
+            email: wo.email,
+            item: wo.itemDescription,
+            issue: wo.issue,
+            status: wo.status,
+            assignedTo: getUserName(wo.assignedUserId),
+            notes: wo.notes || '',
+            created: wo.createdAt ? new Date(wo.createdAt).toLocaleDateString() : '',
+            dueDate: wo.dueDate ? new Date(wo.dueDate).toLocaleDateString() : '',
+          }))}
+          exportFilename="work_orders"
         />
+
+        {/* Work Orders Display */}
+        {filteredAndSortedWorkOrders.length === 0 ? (
+          <Card className="mt-6">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Wrench className="h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-lg text-gray-500 mb-2">No work orders found</p>
+              <p className="text-sm text-gray-400 mb-4">
+                {searchTerm ? 'Try adjusting your search terms' : 'Create your first work order to get started'}
+              </p>
+            </CardContent>
+          </Card>
+        ) : view === 'cards' ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-6">
+            {filteredAndSortedWorkOrders.map((workOrder) => (
+              <Card key={workOrder.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{workOrder.customerName}</CardTitle>
+                      <p className="text-sm text-gray-600">{workOrder.telephone}</p>
+                    </div>
+                    {getStatusBadge(workOrder.status || 'received')}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <p className="text-sm"><strong>Item:</strong> {workOrder.itemDescription}</p>
+                    <p className="text-sm"><strong>Issue:</strong> {workOrder.issue}</p>
+                    <p className="text-sm"><strong>Assigned:</strong> {getUserName(workOrder.assignedUserId)}</p>
+                    {workOrder.notes && (
+                      <p className="text-sm"><strong>Notes:</strong> {workOrder.notes}</p>
+                    )}
+                    <div className="flex justify-between items-center pt-2">
+                      <p className="text-xs text-gray-500">
+                        Created: {new Date(workOrder.createdAt!).toLocaleDateString()}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(workOrder)}
+                          data-testid={`button-edit-${workOrder.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(workOrder.id)}
+                          data-testid={`button-delete-${workOrder.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6">
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="border-b">
+                      <tr>
+                        <th className="text-left p-4 font-medium">Customer</th>
+                        <th className="text-left p-4 font-medium">Item & Issue</th>
+                        <th className="text-left p-4 font-medium">Status</th>
+                        <th className="text-left p-4 font-medium">Assigned</th>
+                        <th className="text-left p-4 font-medium">Created</th>
+                        <th className="text-right p-4 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAndSortedWorkOrders.map((workOrder) => (
+                        <tr key={workOrder.id} className="border-b hover:bg-gray-50">
+                          <td className="p-4">
+                            <div>
+                              <div className="font-medium">{workOrder.customerName}</div>
+                              <div className="text-sm text-gray-500">{workOrder.telephone}</div>
+                              <div className="text-sm text-gray-500">{workOrder.email}</div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div>
+                              <div className="font-medium text-sm">{workOrder.itemDescription}</div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {workOrder.issue.length > 100 
+                                  ? `${workOrder.issue.substring(0, 100)}...` 
+                                  : workOrder.issue}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            {getStatusBadge(workOrder.status || 'received')}
+                          </td>
+                          <td className="p-4">
+                            <span className="text-sm">{getUserName(workOrder.assignedUserId)}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-sm text-gray-600">
+                              {new Date(workOrder.createdAt!).toLocaleDateString()}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(workOrder)}
+                                data-testid={`button-edit-${workOrder.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(workOrder.id)}
+                                data-testid={`button-delete-${workOrder.id}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
