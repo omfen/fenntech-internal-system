@@ -571,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         'B088P6RXJY': {
           name: 'Continental Gatorskin Black Edition Set of 2 (700x25)',
-          price: 89.99
+          price: 119.90
         },
       };
 
