@@ -41,6 +41,24 @@ const urgencyColors = {
   urgent: "bg-red-100 text-red-800",
 };
 
+const statusColors = {
+  pending: "bg-yellow-100 text-yellow-800",
+  in_progress: "bg-blue-100 text-blue-800",
+  quoted: "bg-purple-100 text-purple-800",
+  accepted: "bg-green-100 text-green-800",
+  declined: "bg-red-100 text-red-800",
+  completed: "bg-gray-100 text-gray-800",
+};
+
+const statusOptions = [
+  { value: "pending", label: "Pending" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "quoted", label: "Quoted" },
+  { value: "accepted", label: "Accepted" },
+  { value: "declined", label: "Declined" },
+  { value: "completed", label: "Completed" },
+];
+
 export default function QuotationRequestsPage() {
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -126,6 +144,31 @@ export default function QuotationRequestsPage() {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await fetch(`/api/quotation-requests/${id}`, {
+        method: "PUT", 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("auth_token")}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update status");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotation-requests"] });
+      toast({ title: "Success", description: "Status updated successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/quotation-requests/${id}`, {
@@ -188,6 +231,10 @@ export default function QuotationRequestsPage() {
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
+  };
+
+  const handleStatusChange = (id: string, status: string) => {
+    updateStatusMutation.mutate({ id, status });
   };
 
   if (isLoading) {
@@ -342,10 +389,15 @@ export default function QuotationRequestsPage() {
                           {request.customerName}
                         </h3>
                       </div>
-                      <Badge className={urgencyColors[request.urgency as keyof typeof urgencyColors]}>
-                        {request.urgency === "urgent" && <AlertCircle className="h-3 w-3 mr-1" />}
-                        {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
-                      </Badge>
+                      <div className="flex space-x-2">
+                        <Badge className={urgencyColors[request.urgency as keyof typeof urgencyColors]}>
+                          {request.urgency === "urgent" && <AlertCircle className="h-3 w-3 mr-1" />}
+                          {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
+                        </Badge>
+                        <Badge className={statusColors[request.status as keyof typeof statusColors]}>
+                          {statusOptions.find(s => s.value === request.status)?.label || request.status}
+                        </Badge>
+                      </div>
                     </div>
                     
                     <div className="space-y-2 mb-4">
@@ -371,29 +423,43 @@ export default function QuotationRequestsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 sm:ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(request)}
-                      data-testid={`edit-request-${request.id}`}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
+                  <div className="flex flex-col space-y-2 sm:ml-4">
+                    <Select onValueChange={(value) => handleStatusChange(request.id, value)}>
+                      <SelectTrigger className="w-full" data-testid={`select-status-${request.id}`}>
+                        <SelectValue placeholder="Change Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statusOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(request)}
+                        data-testid={`edit-request-${request.id}`}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
 
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
                           variant="destructive"
                           size="sm"
                           data-testid={`delete-request-${request.id}`}
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Quotation Request</AlertDialogTitle>
                           <AlertDialogDescription>
@@ -410,8 +476,9 @@ export default function QuotationRequestsPage() {
                             Delete Request
                           </AlertDialogAction>
                         </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
               </CardContent>
