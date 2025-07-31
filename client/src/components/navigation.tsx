@@ -31,13 +31,16 @@ export default function Navigation() {
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
+      {/* Logo at top center */}
+      <div className="flex justify-center py-4 border-b">
+        <Link href="/">
+          <img src={FennTechLogo} alt="FennTech" className="h-12 w-auto" />
+        </Link>
+      </div>
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            {/* Logo */}
-            <Link href="/">
-              <img src={FennTechLogo} alt="FennTech" className="h-8 w-auto" />
-            </Link>
             {/* Dashboard */}
             <Link href={dashboardItem.path}>
               <Button
