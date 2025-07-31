@@ -6,10 +6,12 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, ExternalLink, Calculator, Mail, History, DollarSign } from 'lucide-react';
+import { AlertCircle, ExternalLink, Calculator, Mail, History, DollarSign, Eye, Download, Send, FileText } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
@@ -45,6 +47,13 @@ export function AmazonPricing() {
   const [entryMode, setEntryMode] = useState<'url' | 'manual'>('url');
   const [selectedSession, setSelectedSession] = useState<AmazonPricingSession | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [amazonEmailForm, setAmazonEmailForm] = useState({
+    recipient: '',
+    subject: '',
+    notes: ''
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -231,6 +240,94 @@ export function AmazonPricing() {
       });
     },
   });
+
+  // Download mutation for Amazon sessions
+  const downloadAmazonMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const response = await apiRequest('GET', `/api/amazon-pricing-sessions/${sessionId}/download`);
+      const blob = await response.blob();
+      return { blob, sessionId };
+    },
+    onSuccess: ({ blob, sessionId }) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `amazon-pricing-${sessionId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast({
+        title: "Download Complete",
+        description: "Amazon pricing details downloaded successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download Amazon pricing details",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Email mutation for Amazon sessions
+  const emailAmazonMutation = useMutation({
+    mutationFn: async ({ sessionId, data }: { sessionId: string; data: any }) => {
+      const response = await apiRequest('POST', `/api/amazon-pricing-sessions/${sessionId}/email`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email Sent",
+        description: "Amazon pricing details emailed successfully",
+      });
+      setShowEmailDialog(false);
+      setAmazonEmailForm({ recipient: '', subject: '', notes: '' });
+    },
+    onError: () => {
+      toast({
+        title: "Email Failed",
+        description: "Failed to send Amazon pricing details",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAmazonView = (session: AmazonPricingSession) => {
+    setSelectedSession(session);
+    setShowViewDialog(true);
+  };
+
+  const handleAmazonDownload = (sessionId: string) => {
+    downloadAmazonMutation.mutate(sessionId);
+  };
+
+  const handleAmazonEmail = (session: AmazonPricingSession) => {
+    setSelectedSession(session);
+    setAmazonEmailForm({
+      recipient: '',
+      subject: `Amazon Pricing - ${session.productName}`,
+      notes: ''
+    });
+    setShowEmailDialog(true);
+  };
+
+  const handleSendAmazonEmail = () => {
+    if (!selectedSession || !amazonEmailForm.recipient.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide a recipient email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    emailAmazonMutation.mutate({
+      sessionId: selectedSession.id,
+      data: amazonEmailForm
+    });
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -553,21 +650,36 @@ export function AmazonPricing() {
                       <Badge variant={session.emailSent ? "default" : "secondary"} className="text-xs">
                         {session.emailSent ? "Emailed" : "Pending"}
                       </Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedSession(session);
-                          setShowEmailForm(true);
-                          emailForm.setValue('subject', `Amazon Pricing Report - ${session.productName}`);
-                        }}
-                        disabled={sendEmailMutation.isPending}
-                        className="text-xs"
-                        data-testid={`button-email-${session.id}`}
-                      >
-                        <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
-                        <span className="ml-1 sm:hidden">Email</span>
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAmazonView(session)}
+                          className="p-1 h-8 w-8"
+                          data-testid={`button-view-${session.id}`}
+                        >
+                          <Eye className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAmazonDownload(session.id)}
+                          disabled={downloadAmazonMutation.isPending}
+                          className="p-1 h-8 w-8"
+                          data-testid={`button-download-${session.id}`}
+                        >
+                          <Download className="h-4 w-4 text-gray-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleAmazonEmail(session)}
+                          className="p-1 h-8 w-8"
+                          data-testid={`button-email-${session.id}`}
+                        >
+                          <Send className="h-4 w-4 text-orange-600" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   {session.notes && (
@@ -667,6 +779,122 @@ export function AmazonPricing() {
           </CardContent>
         </Card>
       )}
+
+      {/* View Session Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>Session Details</span>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSession && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Product Name</Label>
+                <div className="text-sm text-gray-700 dark:text-gray-300">{selectedSession.productName}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Cost (USD)</Label>
+                  <div className="text-sm text-gray-700 dark:text-gray-300">${parseFloat(selectedSession.costUsd).toFixed(2)}</div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Amazon Price (USD)</Label>
+                  <div className="text-sm text-gray-700 dark:text-gray-300">${parseFloat(selectedSession.amazonPrice).toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium">Markup</Label>
+                  <div className="text-sm text-gray-700 dark:text-gray-300">{parseFloat(selectedSession.markupPercentage).toFixed(0)}%</div>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Final Price (JMD)</Label>
+                  <div className="text-sm font-semibold text-green-600">${parseFloat(selectedSession.sellingPriceJmd).toLocaleString()}</div>
+                </div>
+              </div>
+              {selectedSession.notes && (
+                <div>
+                  <Label className="text-sm font-medium">Notes</Label>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-2 rounded">{selectedSession.notes}</div>
+                </div>
+              )}
+              <div>
+                <Label className="text-sm font-medium">Created</Label>
+                <div className="text-sm text-gray-700 dark:text-gray-300">{new Date(selectedSession.createdAt!).toLocaleString()}</div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Session Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Mail className="h-5 w-5" />
+              <span>Email Session</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="amazon-email-recipient" className="text-sm font-medium">Recipient Email</Label>
+              <Input
+                id="amazon-email-recipient"
+                type="email"
+                value={amazonEmailForm.recipient}
+                onChange={(e) => setAmazonEmailForm({ ...amazonEmailForm, recipient: e.target.value })}
+                placeholder="Enter recipient email"
+                className="mt-1"
+                data-testid="input-amazon-email-recipient"
+              />
+            </div>
+            <div>
+              <Label htmlFor="amazon-email-subject" className="text-sm font-medium">Subject</Label>
+              <Input
+                id="amazon-email-subject"
+                value={amazonEmailForm.subject}
+                onChange={(e) => setAmazonEmailForm({ ...amazonEmailForm, subject: e.target.value })}
+                placeholder="Email subject"
+                className="mt-1"
+                data-testid="input-amazon-email-subject"
+              />
+            </div>
+            <div>
+              <Label htmlFor="amazon-email-notes" className="text-sm font-medium">Additional Notes (Optional)</Label>
+              <Textarea
+                id="amazon-email-notes"
+                value={amazonEmailForm.notes}
+                onChange={(e) => setAmazonEmailForm({ ...amazonEmailForm, notes: e.target.value })}
+                placeholder="Add any additional notes..."
+                className="mt-1"
+                data-testid="textarea-amazon-email-notes"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                onClick={handleSendAmazonEmail}
+                disabled={emailAmazonMutation.isPending || !amazonEmailForm.recipient.trim()}
+                className="flex-1"
+                data-testid="button-send-amazon-email"
+              >
+                {emailAmazonMutation.isPending ? 'Sending...' : 'Send Email'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowEmailDialog(false)}
+                className="flex-1"
+                data-testid="button-cancel-amazon-email"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
