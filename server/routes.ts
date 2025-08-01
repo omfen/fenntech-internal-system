@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authenticateToken, requireAdmin } from "./auth";
 import authRoutes from "./auth-routes";
-import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, insertCustomerInquirySchema, insertQuotationRequestSchema, insertWorkOrderSchema, insertTicketSchema, type EmailReport, type User } from "@shared/schema";
+import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema, insertAmazonPricingSessionSchema, insertCustomerInquirySchema, insertQuotationRequestSchema, insertWorkOrderSchema, insertTicketSchema, type EmailReport, type User, insertCashCollectionSchema, insertEndOfDaySummarySchema } from "@shared/schema";
 import { insertTaskSchema } from "@shared/task-schema";
 import { z } from "zod";
 import multer from "multer";
@@ -1658,6 +1658,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Call Log email route
+  app.post("/api/call-logs/:id/email", authenticateToken, async (req, res) => {
+    try {
+      const emailSchema = z.object({
+        recipient: z.string().email(),
+        subject: z.string().min(1),
+        notes: z.string().optional(),
+      });
+
+      const emailData = emailSchema.parse(req.body);
+      const callLog = await storage.getCallLogById(req.params.id);
+      
+      if (!callLog) {
+        return res.status(404).json({ message: "Call Log not found" });
+      }
+
+      const htmlContent = `
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #1976D2;">FennTech Call Log Summary</h2>
+              
+              <p>Dear Team,</p>
+              
+              <p>Please find below the call log details:</p>
+              
+              <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #1976D2;">Call Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Customer:</strong></td>
+                    <td style="padding: 5px 0;">${callLog.customerName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Phone:</strong></td>
+                    <td style="padding: 5px 0;">${callLog.phoneNumber}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Type:</strong></td>
+                    <td style="padding: 5px 0; text-transform: capitalize;">${callLog.callType}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Purpose:</strong></td>
+                    <td style="padding: 5px 0; text-transform: capitalize;">${callLog.callPurpose}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Duration:</strong></td>
+                    <td style="padding: 5px 0;">${callLog.duration || 'N/A'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Outcome:</strong></td>
+                    <td style="padding: 5px 0; text-transform: capitalize;">${callLog.outcome}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Status:</strong></td>
+                    <td style="padding: 5px 0; text-transform: capitalize;">${callLog.status}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Date:</strong></td>
+                    <td style="padding: 5px 0;">${new Date(callLog.createdAt).toLocaleString()}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              ${callLog.notes ? `
+                <div style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+                  <h4 style="margin-top: 0; color: #1976D2;">Call Notes:</h4>
+                  <p style="margin-bottom: 0;">${callLog.notes}</p>
+                </div>
+              ` : ''}
+              
+              ${emailData.notes ? `
+                <div style="margin: 20px 0; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                  <h4 style="margin-top: 0; color: #856404;">Additional Notes:</h4>
+                  <p style="margin-bottom: 0;">${emailData.notes}</p>
+                </div>
+              ` : ''}
+              
+              <p style="margin-top: 30px;">Best regards,<br><strong>FennTech Customer Service</strong></p>
+              
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+                <p>This is an automated report generated on ${new Date().toLocaleString()}.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await sgMail.send({
+        from: 'admin@fenntechltd.com',
+        to: emailData.recipient,
+        subject: emailData.subject,
+        html: htmlContent,
+      });
+
+      res.json({ message: "Call log email sent successfully" });
+    } catch (error) {
+      console.error('Call log email sending error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid email data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to send call log email" });
+      }
+    }
+  });
+
+  // Customer Inquiry email route (for resolutions)
+  app.post("/api/customer-inquiries/:id/email", authenticateToken, async (req, res) => {
+    try {
+      const emailSchema = z.object({
+        recipient: z.string().email(),
+        subject: z.string().min(1),
+        resolution: z.string().min(1),
+        notes: z.string().optional(),
+      });
+
+      const emailData = emailSchema.parse(req.body);
+      const inquiry = await storage.getCustomerInquiryById(req.params.id);
+      
+      if (!inquiry) {
+        return res.status(404).json({ message: "Customer Inquiry not found" });
+      }
+
+      const htmlContent = `
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #1976D2;">FennTech - Inquiry Resolution</h2>
+              
+              <p>Dear ${inquiry.customerName},</p>
+              
+              <p>Thank you for contacting FennTech. We have reviewed your inquiry and are pleased to provide you with a resolution.</p>
+              
+              <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #1976D2;">Your Inquiry</h3>
+                <p><strong>Product/Service:</strong> ${inquiry.productService}</p>
+                <p><strong>Inquiry Details:</strong></p>
+                <div style="background: white; padding: 10px; border-radius: 3px; margin: 10px 0;">
+                  ${inquiry.inquiryDetails}
+                </div>
+              </div>
+              
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #2e7d32;">Resolution</h3>
+                <div style="background: white; padding: 10px; border-radius: 3px; margin: 10px 0;">
+                  ${emailData.resolution}
+                </div>
+              </div>
+              
+              ${emailData.notes ? `
+                <div style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+                  <h4 style="margin-top: 0; color: #1976D2;">Additional Information:</h4>
+                  <p style="margin-bottom: 0;">${emailData.notes}</p>
+                </div>
+              ` : ''}
+              
+              <div style="margin: 30px 0; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                <p style="margin: 0;"><strong>Need further assistance?</strong> Please don't hesitate to contact us:</p>
+                <p style="margin: 5px 0 0 0;">📞 Phone: ${inquiry.contactPhone || 'Contact us'} | 📧 Email: admin@fenntechltd.com</p>
+              </div>
+              
+              <p style="margin-top: 30px;">Best regards,<br><strong>FennTech Customer Service Team</strong></p>
+              
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+                <p>This email was sent in response to your inquiry submitted on ${new Date(inquiry.createdAt).toLocaleDateString()}.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await sgMail.send({
+        from: 'admin@fenntechltd.com',
+        to: emailData.recipient,
+        subject: emailData.subject,
+        html: htmlContent,
+      });
+
+      // Mark inquiry as resolved and email sent
+      await storage.updateCustomerInquiry(inquiry.id, { 
+        status: 'completed',
+        resolutionNotes: emailData.resolution 
+      });
+
+      res.json({ message: "Customer inquiry resolution email sent successfully" });
+    } catch (error) {
+      console.error('Customer inquiry email sending error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid email data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to send customer inquiry email" });
+      }
+    }
+  });
+
   // Work Orders routes
   app.get("/api/work-orders", authenticateToken, async (req, res) => {
     try {
@@ -3054,6 +3249,266 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting notification:", error);
       res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Cash Collections routes
+  app.get("/api/cash-collections", authenticateToken, async (req, res) => {
+    try {
+      const collections = await storage.getCashCollections();
+      res.json(collections);
+    } catch (error) {
+      console.error("Error fetching cash collections:", error);
+      res.status(500).json({ message: "Failed to fetch cash collections" });
+    }
+  });
+
+  app.get("/api/cash-collections/:id", authenticateToken, async (req, res) => {
+    try {
+      const collection = await storage.getCashCollectionById(req.params.id);
+      if (!collection) {
+        return res.status(404).json({ message: "Cash collection not found" });
+      }
+      res.json(collection);
+    } catch (error) {
+      console.error("Error fetching cash collection:", error);
+      res.status(500).json({ message: "Failed to fetch cash collection" });
+    }
+  });
+
+  app.post("/api/cash-collections", authenticateToken, async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = req.user!;
+      const collectionData = {
+        ...req.body,
+        collectedBy: user.id
+      };
+      const validatedData = insertCashCollectionSchema.parse(collectionData);
+      const collection = await storage.createCashCollection(validatedData);
+      res.status(201).json(collection);
+    } catch (error) {
+      console.error("Error creating cash collection:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to create cash collection" });
+      }
+    }
+  });
+
+  app.patch("/api/cash-collections/:id", authenticateToken, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      const collection = await storage.updateCashCollection(id, updates);
+      if (!collection) {
+        return res.status(404).json({ message: "Cash collection not found" });
+      }
+      res.json(collection);
+    } catch (error) {
+      console.error("Error updating cash collection:", error);
+      res.status(500).json({ message: "Failed to update cash collection" });
+    }
+  });
+
+  app.delete("/api/cash-collections/:id", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteCashCollection(id);
+      if (!success) {
+        return res.status(404).json({ message: "Cash collection not found" });
+      }
+      res.json({ message: "Cash collection deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting cash collection:", error);
+      res.status(500).json({ message: "Failed to delete cash collection" });
+    }
+  });
+
+  // End of Day Summaries routes
+  app.get("/api/end-of-day-summaries", authenticateToken, async (req, res) => {
+    try {
+      const summaries = await storage.getEndOfDaySummaries();
+      res.json(summaries);
+    } catch (error) {
+      console.error("Error fetching end of day summaries:", error);
+      res.status(500).json({ message: "Failed to fetch end of day summaries" });
+    }
+  });
+
+  app.post("/api/end-of-day-summaries/generate", authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res) => {
+    try {
+      const user = req.user!;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Check if summary already exists for today
+      const existingSummary = await storage.getEndOfDaySummaryByDate(today);
+      if (existingSummary) {
+        return res.status(400).json({ message: "End of day summary already exists for today" });
+      }
+
+      // Gather daily activities
+      const tasks = await storage.getTasks();
+      const workOrders = await storage.getWorkOrders();  
+      const tickets = await storage.getTickets();
+      const customerInquiries = await storage.getCustomerInquiries();
+      const callLogs = await storage.getCallLogs();
+      const cashCollections = await storage.getCashCollectionsByDate(today);
+
+      // Filter today's activities
+      const todayActivities = {
+        tasks: tasks.filter(t => new Date(t.createdAt).toDateString() === today.toDateString()),
+        workOrders: workOrders.filter(w => new Date(w.createdAt).toDateString() === today.toDateString()),
+        tickets: tickets.filter(t => new Date(t.createdAt).toDateString() === today.toDateString()),
+        customerInquiries: customerInquiries.filter(c => new Date(c.createdAt).toDateString() === today.toDateString()),
+        callLogs: callLogs.filter(c => new Date(c.createdAt).toDateString() === today.toDateString()),
+        cashCollections: cashCollections
+      };
+
+      // Calculate totals
+      const totalCash = cashCollections
+        .filter(c => c.type === 'cash')
+        .reduce((sum, c) => sum + parseFloat(c.amount), 0);
+        
+      const totalCheques = cashCollections
+        .filter(c => c.type === 'cheque')
+        .reduce((sum, c) => sum + parseFloat(c.amount), 0);
+
+      // Create summary data
+      const activitiesSummary = {
+        date: today.toDateString(),
+        counts: {
+          newTasks: todayActivities.tasks.length,
+          newWorkOrders: todayActivities.workOrders.length,
+          newTickets: todayActivities.tickets.length,
+          newInquiries: todayActivities.customerInquiries.length,
+          callsHandled: todayActivities.callLogs.length,
+          cashCollections: cashCollections.length
+        },
+        details: todayActivities
+      };
+
+      // Create the summary record
+      const summary = await storage.createEndOfDaySummary({
+        summaryDate: today,
+        activitiesSummary,
+        totalCashCollected: totalCash.toString(),
+        totalChequesCollected: totalCheques.toString(),
+        generatedBy: user.id
+      });
+
+      // Send email to Omar
+      const htmlContent = `
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #1976D2; text-align: center;">FennTech - End of Day Summary</h1>
+              <h2 style="color: #666; text-align: center;">${today.toLocaleDateString()}</h2>
+              
+              <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                <h3 style="color: #1976D2; margin-top: 0;">Daily Activity Overview</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                  <div style="background: white; padding: 15px; border-radius: 5px; text-align: center;">
+                    <h4 style="margin: 0; color: #2e7d32;">${activitiesSummary.counts.newTasks}</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">New Tasks</p>
+                  </div>
+                  <div style="background: white; padding: 15px; border-radius: 5px; text-align: center;">
+                    <h4 style="margin: 0; color: #1976D2;">${activitiesSummary.counts.newWorkOrders}</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">Work Orders</p>
+                  </div>
+                  <div style="background: white; padding: 15px; border-radius: 5px; text-align: center;">
+                    <h4 style="margin: 0; color: #f57c00;">${activitiesSummary.counts.newTickets}</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">Support Tickets</p>
+                  </div>
+                  <div style="background: white; padding: 15px; border-radius: 5px; text-align: center;">
+                    <h4 style="margin: 0; color: #7b1fa2;">${activitiesSummary.counts.newInquiries}</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">Customer Inquiries</p>
+                  </div>
+                  <div style="background: white; padding: 15px; border-radius: 5px; text-align: center;">
+                    <h4 style="margin: 0; color: #388e3c;">${activitiesSummary.counts.callsHandled}</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">Calls Handled</p>
+                  </div>
+                  <div style="background: white; padding: 15px; border-radius: 5px; text-align: center;">
+                    <h4 style="margin: 0; color: #d32f2f;">${activitiesSummary.counts.cashCollections}</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">Collections</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                <h3 style="color: #2e7d32; margin-top: 0;">Financial Summary</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                  <div style="background: white; padding: 15px; border-radius: 5px;">
+                    <h4 style="margin: 0; color: #2e7d32;">Cash Collected</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold;">JMD $${totalCash.toFixed(2)}</p>
+                  </div>
+                  <div style="background: white; padding: 15px; border-radius: 5px;">
+                    <h4 style="margin: 0; color: #1976D2;">Cheques Collected</h4>
+                    <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: bold;">JMD $${totalCheques.toFixed(2)}</p>
+                  </div>
+                </div>
+                <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin-top: 15px; text-align: center;">
+                  <h4 style="margin: 0; color: #856404;">Total Collections</h4>
+                  <p style="margin: 5px 0 0 0; font-size: 24px; font-weight: bold; color: #2e7d32;">JMD $${(totalCash + totalCheques).toFixed(2)}</p>
+                </div>
+              </div>
+
+              ${cashCollections.length > 0 ? `
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                  <h3 style="color: #1976D2; margin-top: 0;">Collection Details</h3>
+                  <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 5px; overflow: hidden;">
+                    <thead>
+                      <tr style="background: #f5f5f5;">
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Type</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Amount</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Reason</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Customer</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${cashCollections.map(c => `
+                        <tr>
+                          <td style="padding: 10px; border-bottom: 1px solid #eee; text-transform: capitalize;">${c.type}</td>
+                          <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: bold;">$${parseFloat(c.amount).toFixed(2)}</td>
+                          <td style="padding: 10px; border-bottom: 1px solid #eee;">${c.reason}</td>
+                          <td style="padding: 10px; border-bottom: 1px solid #eee;">${c.customerName || 'N/A'}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : ''}
+
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #1976D2; text-align: center;">
+                <p style="margin: 0; color: #666;">Generated automatically by FennTech Internal System</p>
+                <p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">Report generated on ${new Date().toLocaleString()}</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await sgMail.send({
+        from: 'admin@fenntechltd.com',
+        to: 'omar.fennell@gmail.com',
+        subject: `FennTech End of Day Summary - ${today.toLocaleDateString()}`,
+        html: htmlContent,
+      });
+
+      // Mark email as sent
+      await storage.updateEndOfDaySummaryEmailSent(summary.id);
+
+      res.json({ 
+        message: "End of day summary generated and sent successfully",
+        summary: {
+          ...summary,
+          emailSent: new Date()
+        }
+      });
+    } catch (error) {
+      console.error("Error generating end of day summary:", error);
+      res.status(500).json({ message: "Failed to generate end of day summary" });
     }
   });
 

@@ -1,6 +1,6 @@
-import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, type ChangeLog, type InsertChangeLog, type CompanySettings, type InsertCompanySettings, type Client, type InsertClient, type Quotation, type InsertQuotation, type Invoice, type InsertInvoice, type Notification, type InsertNotification, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs, changeLog, companySettings, clients, quotations, invoices, notifications } from "@shared/schema";
+import { type Category, type InsertCategory, type UpdateCategory, type User, type InsertUser, type PricingSession, type InsertPricingSession, type AmazonPricingSession, type InsertAmazonPricingSession, type CustomerInquiry, type InsertCustomerInquiry, type QuotationRequest, type InsertQuotationRequest, type WorkOrder, type InsertWorkOrder, type Ticket, type InsertTicket, type CallLog, type InsertCallLog, type Task, type InsertTask, type UpdateTask, type TaskLog, type InsertTaskLog, type ChangeLog, type InsertChangeLog, type CompanySettings, type InsertCompanySettings, type Client, type InsertClient, type Quotation, type InsertQuotation, type Invoice, type InsertInvoice, type Notification, type InsertNotification, type CashCollection, type InsertCashCollection, type EndOfDaySummary, type InsertEndOfDaySummary, categories, users, pricingSessions, amazonPricingSessions, customerInquiries, quotationRequests, workOrders, tickets, callLogs, tasks, taskLogs, changeLog, companySettings, clients, quotations, invoices, notifications, cashCollections, endOfDaySummaries } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { hashPassword } from "./auth";
 
 export interface IStorage {
@@ -120,6 +120,21 @@ export interface IStorage {
   markNotificationAsRead(id: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   deleteNotification(id: string): Promise<void>;
+
+  // Cash Collections
+  getCashCollections(): Promise<CashCollection[]>;
+  getCashCollectionById(id: string): Promise<CashCollection | undefined>;
+  createCashCollection(collection: InsertCashCollection): Promise<CashCollection>;
+  updateCashCollection(id: string, updates: Partial<CashCollection>): Promise<CashCollection | undefined>;
+  deleteCashCollection(id: string): Promise<boolean>;
+  getCashCollectionsByDate(date: Date): Promise<CashCollection[]>; 
+
+  // End of Day Summaries  
+  getEndOfDaySummaries(): Promise<EndOfDaySummary[]>;
+  getEndOfDaySummaryById(id: string): Promise<EndOfDaySummary | undefined>;
+  createEndOfDaySummary(summary: InsertEndOfDaySummary): Promise<EndOfDaySummary>;
+  getEndOfDaySummaryByDate(date: Date): Promise<EndOfDaySummary | undefined>;
+  updateEndOfDaySummaryEmailSent(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -900,6 +915,102 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(notifications)
       .where(eq(notifications.id, id));
+  }
+
+  // Cash Collections implementation
+  async getCashCollections(): Promise<CashCollection[]> {
+    const collections = await db.select().from(cashCollections).orderBy(desc(cashCollections.collectionDate));
+    return collections;
+  }
+
+  async getCashCollectionById(id: string): Promise<CashCollection | undefined> {
+    const [collection] = await db.select().from(cashCollections).where(eq(cashCollections.id, id));
+    return collection || undefined;
+  }
+
+  async createCashCollection(collection: InsertCashCollection): Promise<CashCollection> {
+    const [newCollection] = await db
+      .insert(cashCollections)
+      .values(collection)
+      .returning();
+    return newCollection;
+  }
+
+  async updateCashCollection(id: string, updates: Partial<CashCollection>): Promise<CashCollection | undefined> {
+    const [updated] = await db
+      .update(cashCollections)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(cashCollections.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteCashCollection(id: string): Promise<boolean> {
+    const result = await db.delete(cashCollections).where(eq(cashCollections.id, id));
+    return result.count > 0;
+  }
+
+  async getCashCollectionsByDate(date: Date): Promise<CashCollection[]> {
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+
+    const collections = await db
+      .select()
+      .from(cashCollections)
+      .where(
+        and(
+          gte(cashCollections.collectionDate, startDate),
+          lte(cashCollections.collectionDate, endDate)
+        )
+      )
+      .orderBy(desc(cashCollections.collectionDate));
+    return collections;
+  }
+
+  // End of Day Summaries implementation  
+  async getEndOfDaySummaries(): Promise<EndOfDaySummary[]> {
+    const summaries = await db.select().from(endOfDaySummaries).orderBy(desc(endOfDaySummaries.summaryDate));
+    return summaries;
+  }
+
+  async getEndOfDaySummaryById(id: string): Promise<EndOfDaySummary | undefined> {
+    const [summary] = await db.select().from(endOfDaySummaries).where(eq(endOfDaySummaries.id, id));
+    return summary || undefined;
+  }
+
+  async createEndOfDaySummary(summary: InsertEndOfDaySummary): Promise<EndOfDaySummary> {
+    const [newSummary] = await db
+      .insert(endOfDaySummaries)
+      .values(summary)
+      .returning();
+    return newSummary;
+  }
+
+  async getEndOfDaySummaryByDate(date: Date): Promise<EndOfDaySummary | undefined> {
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+
+    const [summary] = await db
+      .select()
+      .from(endOfDaySummaries)
+      .where(
+        and(
+          gte(endOfDaySummaries.summaryDate, startDate),
+          lte(endOfDaySummaries.summaryDate, endDate)
+        )
+      );
+    return summary || undefined;
+  }
+
+  async updateEndOfDaySummaryEmailSent(id: string): Promise<void> {
+    await db
+      .update(endOfDaySummaries)
+      .set({ emailSent: new Date() })
+      .where(eq(endOfDaySummaries.id, id));
   }
 }
 

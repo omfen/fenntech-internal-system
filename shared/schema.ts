@@ -554,8 +554,59 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true,
 });
 
+// Cash/Cheques Collected table
+export const cashCollections = pgTable("cash_collections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("JMD"), // JMD or USD
+  type: varchar("type").notNull(), // 'cash', 'cheque'
+  reason: text("reason").notNull(), // Purpose of the collection
+  actionTaken: text("action_taken").notNull(), // What was done with the money
+  collectedBy: varchar("collected_by").references(() => users.id).notNull(),
+  customerName: varchar("customer_name"), // Optional customer name
+  receiptNumber: varchar("receipt_number"), // Optional receipt reference
+  notes: text("notes"), // Additional notes
+  collectionDate: timestamp("collection_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// End of Day Summary table
+export const endOfDaySummaries = pgTable("end_of_day_summaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  summaryDate: timestamp("summary_date").notNull(),
+  activitiesSummary: jsonb("activities_summary").notNull(), // Summary of all activities
+  totalCashCollected: decimal("total_cash_collected", { precision: 15, scale: 2 }).default("0.00"),
+  totalChequesCollected: decimal("total_cheques_collected", { precision: 15, scale: 2 }).default("0.00"),
+  emailSent: timestamp("email_sent"),
+  generatedBy: varchar("generated_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCashCollectionSchema = createInsertSchema(cashCollections, {
+  collectionDate: z.string().transform(transformDateTime),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEndOfDaySummarySchema = createInsertSchema(endOfDaySummaries, {
+  summaryDate: z.string().transform(transformDateTime),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CashCollection = typeof cashCollections.$inferSelect;
+export type InsertCashCollection = z.infer<typeof insertCashCollectionSchema>;
+export type EndOfDaySummary = typeof endOfDaySummaries.$inferSelect;
+export type InsertEndOfDaySummary = z.infer<typeof insertEndOfDaySummarySchema>;
+
 // Status constants
 export const quotationStatuses = ["draft", "sent", "accepted", "rejected", "expired"] as const;
 export const invoiceStatuses = ["draft", "sent", "paid", "overdue", "cancelled"] as const;
 export const notificationTypes = ["due_date", "status_change", "assignment", "overdue", "system_alert"] as const;
 export const notificationPriorities = ["low", "medium", "high", "urgent"] as const;
+export const cashCollectionTypes = ["cash", "cheque"] as const;
+export const currencies = ["JMD", "USD"] as const;

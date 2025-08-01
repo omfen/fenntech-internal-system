@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Settings, Mail, Save, TestTube, CheckCircle, AlertCircle, ArrowLeft, Home } from "lucide-react";
+import { Settings, Mail, Save, TestTube, CheckCircle, AlertCircle, ArrowLeft, Home, DollarSign, FileText } from "lucide-react";
 import { z } from "zod";
 import { Link } from "wouter";
 
@@ -297,6 +297,92 @@ export default function Administration() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Cash Collections & Financial Management */}
+      <Card>
+        <CardHeader className="border-b border-gray-200">
+          <CardTitle className="flex items-center space-x-2">
+            <DollarSign className="h-5 w-5 text-green-600" />
+            <span>Financial Management</span>
+          </CardTitle>
+          <p className="text-sm text-gray-600">
+            Manage cash and cheque collections and generate end-of-day summaries
+          </p>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Cash & Cheques Collected</h3>
+              <p className="text-sm text-gray-600">
+                Track and manage all cash and cheque collections for accurate financial records.
+              </p>
+              <div className="flex space-x-3">
+                <Link href="/cash-collections">
+                  <Button className="flex items-center space-x-2" data-testid="button-cash-collections">
+                    <DollarSign className="h-4 w-4" />
+                    <span>Manage Collections</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">End of Day Summary</h3>
+              <p className="text-sm text-gray-600">
+                Generate and email comprehensive daily activity reports to management.
+              </p>
+              <div className="flex space-x-3">
+                <EndOfDaySummaryButton />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+function EndOfDaySummaryButton() {
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateSummaryMutation = useMutation({
+    mutationFn: () => apiRequest("/api/end-of-day-summaries/generate", "POST", {}),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "End of day summary generated and emailed successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate end of day summary",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerateSummary = () => {
+    setIsGenerating(true);
+    generateSummaryMutation.mutate(undefined, {
+      onSettled: () => setIsGenerating(false),
+    });
+  };
+
+  return (
+    <Button
+      onClick={handleGenerateSummary}
+      disabled={isGenerating || generateSummaryMutation.isPending}
+      className="flex items-center space-x-2"
+      data-testid="button-generate-summary"
+    >
+      <FileText className="h-4 w-4" />
+      <span>
+        {isGenerating || generateSummaryMutation.isPending
+          ? "Generating..."
+          : "Generate End of Day Summary"}
+      </span>
+    </Button>
   );
 }
