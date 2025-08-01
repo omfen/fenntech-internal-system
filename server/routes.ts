@@ -3364,7 +3364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           html: htmlContent,
         });
 
-        console.log('Cash collection email notification sent successfully');
+        console.log('Cash collection email notification sent successfully to omar.fennell@gmail.com');
       } catch (emailError) {
         console.error('Failed to send cash collection email notification:', emailError);
         // Don't fail the request if email fails
