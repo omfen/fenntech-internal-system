@@ -27,7 +27,7 @@ import {
 import Header from '@/components/header';
 import Navigation from '@/components/navigation';
 import PriceTrendDashboard from '@/components/price-trend-dashboard';
-import type { WorkOrder, Ticket, CustomerInquiry, QuotationRequest, Task } from '@shared/schema';
+import type { WorkOrder, Ticket, CustomerInquiry, QuotationRequest, Task, CashCollection } from '@shared/schema';
 import { format, isAfter, isBefore, addDays } from 'date-fns';
 import { useState } from 'react';
 
@@ -55,15 +55,19 @@ export default function Dashboard() {
     queryKey: ['/api/tasks'],
   });
 
+  const { data: cashCollections = [] } = useQuery<CashCollection[]>({
+    queryKey: ['/api/cash-collections'],
+  });
+
   const { data: changeLog = [] } = useQuery({
     queryKey: ['/api/change-log'],
     staleTime: 30000, // Refresh every 30 seconds
   });
 
   // Calculate due date statistics
-  const today = new Date();
-  const tomorrow = addDays(today, 1);
-  const nextWeek = addDays(today, 7);
+  const currentDate = new Date();
+  const tomorrow = addDays(currentDate, 1);
+  const nextWeek = addDays(currentDate, 7);
   
   const getAllItemsWithDueDates = () => {
     const items: Array<{
@@ -149,15 +153,15 @@ export default function Dashboard() {
   };
 
   const allItems = getAllItemsWithDueDates();
-  const overdueItems = allItems.filter(item => isBefore(item.dueDate, today));
+  const overdueItems = allItems.filter(item => isBefore(item.dueDate, currentDate));
   const dueTodayItems = allItems.filter(item => 
-    format(item.dueDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')
+    format(item.dueDate, 'yyyy-MM-dd') === format(currentDate, 'yyyy-MM-dd')
   );
   const dueTomorrowItems = allItems.filter(item => 
     format(item.dueDate, 'yyyy-MM-dd') === format(tomorrow, 'yyyy-MM-dd')
   );
   const dueThisWeekItems = allItems.filter(item => 
-    isAfter(item.dueDate, today) && isBefore(item.dueDate, nextWeek)
+    isAfter(item.dueDate, currentDate) && isBefore(item.dueDate, nextWeek)
   );
 
   // Daily motivation messages
@@ -175,8 +179,8 @@ export default function Dashboard() {
   ];
   
   const getTodaysMotivation = () => {
-    const today = new Date();
-    const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+    const motivationDate = new Date();
+    const dayOfYear = Math.floor((motivationDate.getTime() - new Date(motivationDate.getFullYear(), 0, 0).getTime()) / 86400000);
     return motivationMessages[dayOfYear % motivationMessages.length];
   };
 
@@ -196,6 +200,24 @@ export default function Dashboard() {
     high: tickets.filter(t => t.priority === 'high').length,
     medium: tickets.filter(t => t.priority === 'medium').length,
     low: tickets.filter(t => t.priority === 'low').length,
+  };
+
+  // Calculate today's cash collections
+  const todayDate = new Date();
+  const startOfToday = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+  const endOfToday = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate(), 23, 59, 59);
+  
+  const todayCollections = cashCollections.filter(collection => {
+    const collectionDate = new Date(collection.collectionDate);
+    return collectionDate >= startOfToday && collectionDate <= endOfToday;
+  });
+
+  const cashStats = {
+    todayTotal: todayCollections.reduce((sum, c) => sum + parseFloat(c.amount), 0),
+    todayCash: todayCollections.filter(c => c.type === 'cash').reduce((sum, c) => sum + parseFloat(c.amount), 0),
+    todayCheques: todayCollections.filter(c => c.type === 'cheque').reduce((sum, c) => sum + parseFloat(c.amount), 0),
+    todayCount: todayCollections.length,
+    totalCollections: cashCollections.length
   };
 
   const getStatusBadge = (status: string) => {
@@ -302,7 +324,7 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Link href="/work-orders">
             <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-work-orders">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -358,6 +380,21 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold">{quotationRequests.length}</div>
                 <p className="text-xs text-muted-foreground">
                   {quotationRequests.filter(q => q.urgency === 'urgent').length} urgent
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/cash-collections">
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid="card-cash-collections">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Today's Collections</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${cashStats.todayTotal.toFixed(2)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {cashStats.todayCount} entries • ${cashStats.todayCash.toFixed(2)} cash + ${cashStats.todayCheques.toFixed(2)} cheques
                 </p>
               </CardContent>
             </Card>
