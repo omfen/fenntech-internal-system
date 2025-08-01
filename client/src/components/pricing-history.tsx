@@ -188,12 +188,13 @@ export default function PricingHistory() {
         description: "Pricing details emailed successfully",
       });
       setShowEmailDialog(false);
+      setSelectedSession(null);
       setEmailForm({ recipient: '', subject: '', notes: '' });
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
         title: "Email Failed",
-        description: "Failed to send pricing details",
+        description: error.message || "Failed to send pricing details",
         variant: "destructive",
       });
     },

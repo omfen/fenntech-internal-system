@@ -1449,6 +1449,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Pricing session email route
+  app.post("/api/pricing-sessions/:id/email", authenticateToken, async (req, res) => {
+    try {
+      const emailSchema = z.object({
+        recipient: z.string().email(),
+        subject: z.string().min(1),
+        notes: z.string().optional(),
+      });
+
+      const emailData = emailSchema.parse(req.body);
+      const session = await storage.getPricingSessionById(req.params.id);
+      
+      if (!session) {
+        return res.status(404).json({ message: "Pricing session not found" });
+      }
+
+      const items = session.items as any[];
+      const totalItems = items.length;
+      const exchangeRate = parseFloat(session.exchangeRate);
+      const totalValue = parseFloat(session.totalValue);
+
+      const htmlContent = `
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #1976D2;">FennTech Intcomex Pricing Report</h2>
+              
+              <p>Dear Team,</p>
+              
+              <p>Please find below the pricing report for ${session.invoiceNumber || 'pricing session ' + session.id.slice(-8)}.</p>
+              
+              <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #1976D2;">Summary</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Exchange Rate:</strong></td>
+                    <td style="padding: 5px 0;">$${exchangeRate.toFixed(4)} JMD</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Total Items:</strong></td>
+                    <td style="padding: 5px 0;">${totalItems}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Total Value:</strong></td>
+                    <td style="padding: 5px 0;">$${totalValue.toLocaleString()} JMD</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>GCT Applied:</strong></td>
+                    <td style="padding: 5px 0;">15%</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 5px 0;"><strong>Rounding:</strong></td>
+                    <td style="padding: 5px 0;">Nearest $${session.roundingOption || 'None'}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <h3 style="color: #1976D2;">Item Details</h3>
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+                <thead>
+                  <tr style="background: #f9f9f9;">
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left; font-size: 12px;">Description</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Cost (USD)</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Markup %</th>
+                    <th style="padding: 8px; border: 1px solid #ddd; text-align: center; font-size: 12px;">Final Price (JMD)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items.map(item => `
+                    <tr>
+                      <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${item.description || item.partNumber || 'N/A'}</td>
+                      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 11px;">$${(item.costUsd || item.costPrice || 0).toFixed(2)}</td>
+                      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 11px;">${item.markupPercentage || 0}%</td>
+                      <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 11px; font-weight: bold;">$${(item.finalPrice || item.finalPriceJmd || 0).toLocaleString()}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              
+              ${emailData.notes ? `
+                <div style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+                  <h4 style="margin-top: 0; color: #1976D2;">Additional Notes:</h4>
+                  <p style="margin-bottom: 0;">${emailData.notes}</p>
+                </div>
+              ` : ''}
+              
+              <p style="margin-top: 30px;">Best regards,<br><strong>FennTech Pricing System</strong></p>
+              
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+                <p>This is an automated report generated on ${new Date().toLocaleString()}.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await sgMail.send({
+        from: 'admin@fenntechltd.com',
+        to: emailData.recipient,
+        subject: emailData.subject,
+        html: htmlContent,
+      });
+
+      // Update session to mark email as sent
+      await storage.updatePricingSessionEmailSent(session.id);
+
+      res.json({ message: "Pricing session email sent successfully" });
+    } catch (error) {
+      console.error('Pricing session email sending error:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid email data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to send pricing session email" });
+      }
+    }
+  });
+
   // Amazon pricing session email route
   app.post("/api/amazon-pricing-sessions/:id/email", authenticateToken, async (req, res) => {
     try {
@@ -1465,15 +1582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Amazon pricing session not found" });
       }
 
-      // Check if email is configured
-      const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
-      const emailPass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
-      
-      if (!emailUser || !emailPass) {
-        return res.status(500).json({ 
-          message: "Email service not configured. Please contact administrator." 
-        });
-      }
+      // SendGrid is configured via SENDGRID_API_KEY
 
       const exchangeRate = parseFloat(session.exchangeRate);
       const costUsd = parseFloat(session.costUsd);
