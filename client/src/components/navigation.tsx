@@ -16,6 +16,7 @@ export default function Navigation() {
 
   const isActive = (path: string) => location === path;
   const isPricingActive = location === "/intcomex-pricing" || location === "/amazon-pricing";
+  const isTransactionsActive = location === "/clients" || location === "/quotations" || location === "/invoices" || location === "/cash-collections";
 
   const dashboardItem = { path: "/", label: "Dashboard", icon: BarChart3 };
   
@@ -126,7 +127,7 @@ export default function Navigation() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="ghost"
+                  variant={isTransactionsActive ? "default" : "ghost"}
                   className="flex items-center space-x-2"
                   data-testid="nav-transactions-dropdown"
                 >
@@ -152,6 +153,12 @@ export default function Navigation() {
                   <Link href="/invoices">
                     <Receipt className="h-4 w-4 mr-2" />
                     Invoices
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/cash-collections">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Cash Collections
                   </Link>
                 </DropdownMenuItem>
 

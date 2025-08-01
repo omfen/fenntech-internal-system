@@ -1,8 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import { 
   Wrench, 
   Ticket as TicketIcon, 
@@ -26,8 +29,12 @@ import Navigation from '@/components/navigation';
 import PriceTrendDashboard from '@/components/price-trend-dashboard';
 import type { WorkOrder, Ticket, CustomerInquiry, QuotationRequest, Task } from '@shared/schema';
 import { format, isAfter, isBefore, addDays } from 'date-fns';
+import { useState } from 'react';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
   const { data: workOrders = [] } = useQuery<WorkOrder[]>({
     queryKey: ['/api/work-orders'],
   });
@@ -545,6 +552,31 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* Admin End of Day Summary (only for administrators) */}
+        {user?.role === 'administrator' && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                End of Day Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Generate and email comprehensive daily activity reports to management
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Reports are automatically sent to omar.fennell@gmail.com
+                  </p>
+                </div>
+                <EndOfDaySummaryButton />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Activity Feed and Price Trends */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
           {/* Recent Activity Feed */}
@@ -603,5 +635,50 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+function EndOfDaySummaryButton() {
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateSummaryMutation = useMutation({
+    mutationFn: () => apiRequest("/api/end-of-day-summaries/generate", "POST", {}),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "End of day summary generated and emailed successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate end of day summary",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleGenerateSummary = () => {
+    setIsGenerating(true);
+    generateSummaryMutation.mutate(undefined, {
+      onSettled: () => setIsGenerating(false),
+    });
+  };
+
+  return (
+    <Button
+      onClick={handleGenerateSummary}
+      disabled={isGenerating || generateSummaryMutation.isPending}
+      className="flex items-center space-x-2"
+      data-testid="button-generate-summary"
+    >
+      <FileText className="h-4 w-4" />
+      <span>
+        {isGenerating || generateSummaryMutation.isPending
+          ? "Generating..."
+          : "Generate Summary"}
+      </span>
+    </Button>
   );
 }
