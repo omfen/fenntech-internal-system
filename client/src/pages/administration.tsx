@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Settings, Mail, Save, TestTube, CheckCircle, AlertCircle } from "lucide-react";
+import { Settings, Mail, Save, TestTube, CheckCircle, AlertCircle, ArrowLeft, Home } from "lucide-react";
 import { z } from "zod";
+import { Link } from "wouter";
 
 // Email configuration schema (SendGrid)
 const emailConfigSchema = z.object({
@@ -102,10 +103,30 @@ export default function Administration() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center space-x-2">
-        <Settings className="h-6 w-6 text-blue-600" />
-        <h1 className="text-2xl lg:text-3xl font-bold">Administration</h1>
+      {/* Header with Navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Settings className="h-6 w-6 text-blue-600" />
+          <h1 className="text-2xl lg:text-3xl font-bold">Administration</h1>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Link href="/">
+            <Button variant="outline" size="sm" className="flex items-center space-x-2" data-testid="button-home">
+              <Home className="h-4 w-4" />
+              <span>Dashboard</span>
+            </Button>
+          </Link>
+          <Link href="/tasks">
+            <Button variant="outline" size="sm" data-testid="button-tasks">
+              Tasks
+            </Button>
+          </Link>
+          <Link href="/quotations">
+            <Button variant="outline" size="sm" data-testid="button-quotations">
+              Quotations
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Email Configuration Section */}

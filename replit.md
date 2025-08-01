@@ -2,7 +2,7 @@
 
 ## Overview
 
-This full-stack web application, FennTech Pricing System, streamlines inventory pricing and management. It features two core functionalities: processing PDF invoices for Intcomex pricing with category-based markups and GCT, and calculating Amazon product prices using a Cost+7% formula with value-based markups. Both systems generate email reports and maintain comprehensive pricing histories. Beyond pricing, the system has evolved into a full-fledged operational hub, incorporating customer inquiry management, quotation requests, work orders with automated email notifications, a ticketing system, call logs, and comprehensive task management. It includes robust user authentication with role-based access control, multi-domain support, and a comprehensive change tracking system with detailed audit trails and an activity feed. The system aims to enhance operational efficiency, improve customer service, and provide comprehensive oversight for FennTech.
+This full-stack web application, FennTech Pricing System, streamlines inventory pricing and management. It features two core functionalities: processing PDF invoices for Intcomex pricing with category-based markups and GCT, and calculating Amazon product prices using a Cost+7% formula with value-based markups. Both systems generate email reports and maintain comprehensive pricing histories. Beyond pricing, the system has evolved into a full-fledged operational hub, incorporating customer inquiry management, quotation requests, work orders with automated email notifications, a ticketing system, call logs, and comprehensive task management. It includes robust user authentication with role-based access control, multi-domain support, and a comprehensive change tracking system with detailed audit trails and an activity feed. The system uses SendGrid for reliable email delivery with admin@fenntechltd.com as the verified sender. The system aims to enhance operational efficiency, improve customer service, and provide comprehensive oversight for FennTech.
 
 ## User Preferences
 
@@ -31,6 +31,7 @@ The application is structured as a monorepo, separating client, server, and shar
 -   **Authentication & User Management**: Secure JWT-based authentication, role-based access control (Administrator/User), multi-domain email support, and an admin user management interface with approval workflows for new users.
 -   **Customer Management**: Modules for tracking customer product inquiries, quotation requests, and call logs.
 -   **Operational Management**: Systems for work orders (with status workflow and automated email notifications), internal tickets, and comprehensive task management with urgency/priority levels and assignment capabilities.
+-   **Email System**: Complete SendGrid integration for reliable email delivery using admin@fenntechltd.com as verified sender. Handles pricing reports, quotation emails, invoice notifications, work order status updates, and system test emails.
 -   **Data Tracking & Auditing**: Comprehensive change tracking system logs all create, update, and delete operations across entities with user attribution and timestamps. An advanced `ViewOptions` component provides filtering, sorting, view toggles, and export functionalities. An activity feed displays real-time system changes.
 -   **Due Date Management**: Integrated system to track and display due dates across all entities with dashboard visibility for overdue, due today, due tomorrow, and due this week items.
 -   **Persistent Storage**: PostgreSQL database handles all data, including detailed session histories, user information, and operational data, with automatic schema migration. PDF item details are stored as JSONB for flexibility.
@@ -38,7 +39,7 @@ The application is structured as a monorepo, separating client, server, and shar
 ### System Design Choices
 -   RESTful API design for backend.
 -   Multer for file uploads and pdf-parse for PDF text extraction.
--   Nodemailer for email integration (pricing reports and work order notifications).
+-   SendGrid for professional email delivery (pricing reports, quotations, invoices, and notifications).
 -   Client-side routing via Wouter.
 -   Form management with React Hook Form and Zod validation.
 -   Admin-only delete permissions across all entities with activity logging for security and accountability.
