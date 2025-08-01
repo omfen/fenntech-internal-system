@@ -7,7 +7,7 @@ import { insertCategorySchema, updateCategorySchema, insertPricingSessionSchema,
 import { insertTaskSchema } from "@shared/task-schema";
 import { z } from "zod";
 import multer from "multer";
-import nodemailer from "nodemailer";
+import sgMail from '@sendgrid/mail';
 import { AmazonProductAPI } from "./amazon-api";
 import { HelpService } from "./help-service";
 import { NotificationService } from "./notification-service";
@@ -17,14 +17,10 @@ import type { AuthenticatedRequest } from "./auth";
 // Configure multer for file uploads
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
 
-// Configure nodemailer
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER || process.env.GMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.EMAIL_PASS || process.env.GMAIL_PASS || 'your-app-password'
-  }
-});
+// Configure SendGrid
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -777,8 +773,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </html>
       `;
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntech.com',
+      await sgMail.send({
+        from: 'noreply@fenntech.com',
         to: emailData.to,
         subject: emailData.subject,
         html: htmlContent,
@@ -806,15 +802,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Administration routes - Email Configuration
   app.get("/api/admin/email-config", authenticateToken, requireAdmin, async (req, res) => {
     try {
-      // Return whether email is configured (without exposing credentials)
-      const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
-      const emailPass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
+      // Return whether SendGrid is configured
+      const sendGridConfigured = !!process.env.SENDGRID_API_KEY;
       
       res.json({
-        isConfigured: !!(emailUser && emailPass),
-        emailUser: emailUser || null,
-        smtpHost: "smtp.gmail.com",
-        smtpPort: "587"
+        isConfigured: sendGridConfigured,
+        emailUser: sendGridConfigured ? 'noreply@fenntech.com' : null,
+        service: "SendGrid"
       });
     } catch (error) {
       console.error("Get email config error:", error);
@@ -824,32 +818,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/email-config", authenticateToken, requireAdmin, async (req, res) => {
     try {
-      const configSchema = z.object({
-        emailUser: z.string().email(),
-        emailPass: z.string().min(1),
-        smtpHost: z.string().optional(),
-        smtpPort: z.string().optional(),
-      });
-
-      const config = configSchema.parse(req.body);
-      
-      // In a production environment, you would securely store these credentials
-      // For now, we'll inform the user they need to set environment variables
+      // For SendGrid, we just acknowledge the request since the API key is set as environment variable
       res.json({ 
-        message: "Email configuration received. Please set the following environment variables: EMAIL_USER, EMAIL_PASS",
-        config: {
-          emailUser: config.emailUser,
-          smtpHost: config.smtpHost || "smtp.gmail.com",
-          smtpPort: config.smtpPort || "587"
-        }
+        message: "SendGrid is configured via SENDGRID_API_KEY environment variable",
+        service: "SendGrid",
+        fromEmail: "noreply@fenntech.com"
       });
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid configuration data", errors: error.errors });
-      } else {
-        console.error("Save email config error:", error);
-        res.status(500).json({ message: "Failed to save email configuration" });
-      }
+      console.error("Save email config error:", error);
+      res.status(500).json({ message: "Failed to save email configuration" });
     }
   });
 
@@ -860,16 +837,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const { testEmail } = testSchema.parse(req.body);
-      
-      // Check if email is configured
-      const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
-      const emailPass = process.env.EMAIL_PASS || process.env.GMAIL_PASS;
-      
-      if (!emailUser || !emailPass) {
-        return res.status(500).json({ 
-          message: "Email service not configured. Please set EMAIL_USER and EMAIL_PASS environment variables." 
-        });
-      }
 
       const htmlContent = `
         <html>
@@ -887,8 +854,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </html>
       `;
 
-      await transporter.sendMail({
-        from: emailUser,
+      // Check if SendGrid is configured
+      if (!process.env.SENDGRID_API_KEY) {
+        return res.status(500).json({ 
+          message: "SendGrid API key not configured. Please set SENDGRID_API_KEY environment variable." 
+        });
+      }
+
+      await sgMail.send({
+        from: 'noreply@fenntech.com', // Use a verified sender domain
         to: testEmail,
         subject: "FennTech Email Configuration Test",
         html: htmlContent,
@@ -1288,8 +1262,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </html>
       `;
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntech.com',
+      await sgMail.send({
+        from: 'noreply@fenntech.com',
         to: emailData.to,
         subject: emailData.subject,
         html: htmlContent,
@@ -2375,7 +2349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyName = companySettings?.name || 'FennTech';
 
       const mailOptions = {
-        from: `${companyName} <${fromEmail}>`,
+        from: 'noreply@fenntech.com',
         to: recipientEmail,
         subject: `Quotation ${quotation.quoteNumber} from ${companyName}`,
         html: `
@@ -2401,15 +2375,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
               <p style="margin: 0;"><strong>${companyName}</strong></p>
-              ${companySettings?.phone ? `<p style="margin: 5px 0;">Phone: ${companySettings.phone}</p>` : ''}
+              ${companySettings?.telephone ? `<p style="margin: 5px 0;">Phone: ${companySettings.telephone}</p>` : ''}
               ${companySettings?.email ? `<p style="margin: 5px 0;">Email: ${companySettings.email}</p>` : ''}
-              ${companySettings?.website ? `<p style="margin: 5px 0;">Website: ${companySettings.website}</p>` : ''}
+              ${companySettings?.url ? `<p style="margin: 5px 0;">Website: ${companySettings.url}</p>` : ''}
             </div>
           </div>
         `,
       };
 
-      await transporter.sendMail(mailOptions);
+      await sgMail.send(mailOptions);
 
       await storage.logEntityChange(
         'quotation',
@@ -2563,7 +2537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyName = companySettings?.name || 'FennTech';
 
       const mailOptions = {
-        from: `${companyName} <${fromEmail}>`,
+        from: 'noreply@fenntech.com',
         to: recipientEmail,
         subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
         html: `
@@ -2592,15 +2566,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
               <p style="margin: 0;"><strong>${companyName}</strong></p>
-              ${companySettings?.phone ? `<p style="margin: 5px 0;">Phone: ${companySettings.phone}</p>` : ''}
+              ${companySettings?.telephone ? `<p style="margin: 5px 0;">Phone: ${companySettings.telephone}</p>` : ''}
               ${companySettings?.email ? `<p style="margin: 5px 0;">Email: ${companySettings.email}</p>` : ''}
-              ${companySettings?.website ? `<p style="margin: 5px 0;">Website: ${companySettings.website}</p>` : ''}
+              ${companySettings?.url ? `<p style="margin: 5px 0;">Website: ${companySettings.url}</p>` : ''}
             </div>
           </div>
         `,
       };
 
-      await transporter.sendMail(mailOptions);
+      await sgMail.send(mailOptions);
 
       await storage.logEntityChange(
         'invoice',

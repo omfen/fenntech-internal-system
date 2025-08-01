@@ -13,12 +13,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Settings, Mail, Save, TestTube, CheckCircle, AlertCircle } from "lucide-react";
 import { z } from "zod";
 
-// Email configuration schema
+// Email configuration schema (SendGrid)
 const emailConfigSchema = z.object({
-  emailUser: z.string().email("Must be a valid email address"),
-  emailPass: z.string().min(1, "Password is required"),
-  smtpHost: z.string().optional(),
-  smtpPort: z.string().optional(),
   testEmail: z.string().email("Must be a valid email address"),
 });
 
@@ -31,10 +27,6 @@ export default function Administration() {
   const form = useForm<EmailConfig>({
     resolver: zodResolver(emailConfigSchema),
     defaultValues: {
-      emailUser: "",
-      emailPass: "",
-      smtpHost: "smtp.gmail.com",
-      smtpPort: "587",
       testEmail: "",
     },
   });
@@ -45,23 +37,23 @@ export default function Administration() {
     retry: false,
   });
 
-  // Save email configuration
-  const saveConfigMutation = useMutation({
-    mutationFn: async (data: EmailConfig) => {
-      const response = await apiRequest('POST', '/api/admin/email-config', data);
+  // SendGrid configuration is handled via environment variables
+  const configStatusMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/admin/email-config', {});
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Configuration Saved",
-        description: "Email configuration has been saved successfully",
+        title: "SendGrid Status",
+        description: data.message || "SendGrid configuration checked",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/email-config"] });
     },
     onError: (error: any) => {
       toast({
-        title: "Save Failed",
-        description: error.message || "Failed to save email configuration",
+        title: "Configuration Error",
+        description: error.message || "Failed to check SendGrid configuration",
         variant: "destructive",
       });
     },
@@ -88,8 +80,8 @@ export default function Administration() {
     },
   });
 
-  const onSubmit = (data: EmailConfig) => {
-    saveConfigMutation.mutate(data);
+  const onSubmit = () => {
+    configStatusMutation.mutate();
   };
 
   const handleTestEmail = () => {
@@ -130,105 +122,57 @@ export default function Administration() {
         <CardContent className="p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Gmail Configuration */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="emailUser"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gmail Email Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="email"
-                          placeholder="your-email@gmail.com"
-                          data-testid="input-email-user"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Gmail address to send emails from
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="emailPass"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Gmail App Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="password"
-                          placeholder="Your Gmail App Password"
-                          data-testid="input-email-pass"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        <a 
-                          href="https://support.google.com/accounts/answer/185833" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Generate Gmail App Password →
-                        </a>
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* SMTP Configuration (Optional Advanced Settings) */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium mb-4">Advanced SMTP Settings (Optional)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="smtpHost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SMTP Host</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="smtp.gmail.com"
-                            data-testid="input-smtp-host"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Default: smtp.gmail.com (for Gmail)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
+              {/* SendGrid Configuration Status */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Mail className="h-5 w-5 text-blue-600" />
+                    <div>
+                      <h4 className="font-medium">Email Service: SendGrid</h4>
+                      <p className="text-sm text-gray-600">
+                        {emailConfig?.isConfigured 
+                          ? `Configured and ready to send emails from ${emailConfig.emailUser}`
+                          : 'SendGrid API key not configured'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {emailConfig?.isConfigured ? (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-5 w-5 text-red-600" />
                     )}
-                  />
+                    <span className={`text-sm font-medium ${
+                      emailConfig?.isConfigured ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {emailConfig?.isConfigured ? 'Active' : 'Not Configured'}
+                    </span>
+                  </div>
+                </div>
 
-                  <FormField
-                    control={form.control}
-                    name="smtpPort"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SMTP Port</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="587"
-                            data-testid="input-smtp-port"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Default: 587 (TLS) or 465 (SSL)
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                {!emailConfig?.isConfigured && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                      <div className="text-sm text-yellow-700">
+                        <p className="font-medium mb-1">SendGrid API Key Required</p>
+                        <p>To enable email functionality, set the SENDGRID_API_KEY environment variable with your SendGrid API key.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    disabled={configStatusMutation.isPending}
+                    className="flex items-center space-x-2"
+                    data-testid="button-check-config"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>{configStatusMutation.isPending ? 'Checking...' : 'Check Configuration'}</span>
+                  </Button>
                 </div>
               </div>
 
@@ -271,18 +215,6 @@ export default function Administration() {
                   </Button>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-4 pt-6 border-t">
-                <Button
-                  type="submit"
-                  disabled={saveConfigMutation.isPending}
-                  data-testid="button-save-config"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {saveConfigMutation.isPending ? "Saving..." : "Save Configuration"}
-                </Button>
-              </div>
             </form>
           </Form>
 
@@ -290,7 +222,7 @@ export default function Administration() {
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-medium mb-2">Configuration Status</h4>
             <div className="flex items-center space-x-2 text-sm">
-              {emailConfig ? (
+              {emailConfig?.isConfigured ? (
                 <>
                   <CheckCircle className="w-4 h-4 text-green-600" />
                   <span className="text-green-700">Email service is configured and ready</span>
