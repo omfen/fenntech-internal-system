@@ -119,7 +119,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/pricing-sessions/:id", authenticateToken, async (req, res) => {
     try {
       const { id } = req.params;
-      const validatedSession = insertPricingSessionSchema.parse(req.body);
+      const requestData = req.body;
+      
+      // Get categories for markup calculations
+      const categories = await storage.getCategories();
+      
+      // Process items with proper rounding based on roundingOption
+      const processedItems = requestData.items?.map((item: any) => {
+        const category = categories.find(c => c.id === item.categoryId);
+        const costUsd = parseFloat(item.costPrice) || 0;
+        const exchangeRate = parseFloat(requestData.exchangeRate) || 162;
+        const quantity = parseInt(item.quantity) || 1;
+        
+        // Calculate markup and GCT
+        const markupPercentage = category ? parseFloat(category.markupPercentage.toString()) : 0;
+        const costJmd = costUsd * exchangeRate * quantity;
+        const sellingPrice = costJmd + (costJmd * markupPercentage / 100);
+        const gctAmount = sellingPrice * 0.15; // 15% GCT
+        const priceWithGct = sellingPrice + gctAmount;
+        
+        // Apply rounding based on roundingOption
+        let finalPrice = priceWithGct;
+        const roundingOption = requestData.roundingOption;
+        
+        if (roundingOption && roundingOption !== 'none') {
+          let roundingValue = 1;
+          if (roundingOption === 'nearest_5' || roundingOption === 5) {
+            roundingValue = 5;
+          } else if (roundingOption === 'nearest_10' || roundingOption === 10) {
+            roundingValue = 10;
+          } else if (roundingOption === 'nearest_50' || roundingOption === 50) {
+            roundingValue = 50;
+          } else if (roundingOption === 'nearest_100' || roundingOption === 100) {
+            roundingValue = 100;
+          }
+          
+          finalPrice = Math.round(priceWithGct / roundingValue) * roundingValue;
+        }
+        
+        return {
+          ...item,
+          costJmd: Math.round(costJmd * 100) / 100,
+          sellingPrice: Math.round(sellingPrice * 100) / 100,
+          finalPrice: Math.round(finalPrice * 100) / 100,
+          markupPercentage,
+          categoryName: category?.name || '',
+        };
+      }) || [];
+      
+      // Update the session data with processed items
+      const sessionData = {
+        ...requestData,
+        items: processedItems,
+        // Convert rounding option to numeric for storage
+        roundingOption: (() => {
+          const option = requestData.roundingOption;
+          if (option === 'nearest_5') return 5;
+          if (option === 'nearest_10') return 10;
+          if (option === 'nearest_50') return 50;
+          if (option === 'nearest_100') return 100;
+          if (typeof option === 'number') return option;
+          return 0; // none
+        })(),
+      };
+      
+      const validatedSession = insertPricingSessionSchema.parse(sessionData);
       const session = await storage.updatePricingSession(id, validatedSession);
       if (!session) {
         return res.status(404).json({ message: "Pricing session not found" });
