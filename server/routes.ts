@@ -3285,6 +3285,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const validatedData = insertCashCollectionSchema.parse(collectionData);
       const collection = await storage.createCashCollection(validatedData);
+
+      // Send email notification to omar.fennell@gmail.com
+      try {
+        const htmlContent = `
+          <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #1976D2;">Cash Collection Recorded - FennTech</h2>
+                
+                <p>Dear Management,</p>
+                
+                <p>A new cash collection has been recorded in the FennTech system:</p>
+                
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                  <h3 style="margin-top: 0; color: #1976D2;">Collection Details</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <td style="padding: 5px 0; width: 40%;"><strong>Amount:</strong></td>
+                      <td style="padding: 5px 0;">$${parseFloat(collection.amount).toLocaleString()} ${collection.currency}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 5px 0;"><strong>Type:</strong></td>
+                      <td style="padding: 5px 0;">${collection.type.charAt(0).toUpperCase() + collection.type.slice(1)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 5px 0;"><strong>Reason:</strong></td>
+                      <td style="padding: 5px 0;">${collection.reason}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 5px 0;"><strong>Action Taken:</strong></td>
+                      <td style="padding: 5px 0;">${collection.actionTaken}</td>
+                    </tr>
+                    ${collection.customerName ? `
+                    <tr>
+                      <td style="padding: 5px 0;"><strong>Customer:</strong></td>
+                      <td style="padding: 5px 0;">${collection.customerName}</td>
+                    </tr>
+                    ` : ''}
+                    ${collection.receiptNumber ? `
+                    <tr>
+                      <td style="padding: 5px 0;"><strong>Receipt #:</strong></td>
+                      <td style="padding: 5px 0;">${collection.receiptNumber}</td>
+                    </tr>
+                    ` : ''}
+                    <tr>
+                      <td style="padding: 5px 0;"><strong>Collection Date:</strong></td>
+                      <td style="padding: 5px 0;">${new Date(collection.collectionDate).toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 5px 0;"><strong>Recorded By:</strong></td>
+                      <td style="padding: 5px 0;">${user.firstName} ${user.lastName}</td>
+                    </tr>
+                  </table>
+                </div>
+                
+                ${collection.notes ? `
+                  <div style="margin: 20px 0; padding: 15px; background: #e3f2fd; border-radius: 5px;">
+                    <h4 style="margin-top: 0; color: #1976D2;">Additional Notes:</h4>
+                    <p style="margin-bottom: 0;">${collection.notes}</p>
+                  </div>
+                ` : ''}
+                
+                <p style="margin-top: 30px;">Best regards,<br><strong>FennTech Internal System</strong></p>
+                
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+                  <p>This notification was generated automatically on ${new Date().toLocaleString()}.</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+
+        await sgMail.send({
+          from: 'admin@fenntechltd.com',
+          to: 'omar.fennell@gmail.com',
+          subject: `Cash Collection Alert - $${parseFloat(collection.amount).toLocaleString()} ${collection.currency} Recorded`,
+          html: htmlContent,
+        });
+
+        console.log('Cash collection email notification sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send cash collection email notification:', emailError);
+        // Don't fail the request if email fails
+      }
+
       res.status(201).json(collection);
     } catch (error) {
       console.error("Error creating cash collection:", error);

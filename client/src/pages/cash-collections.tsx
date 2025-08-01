@@ -45,7 +45,7 @@ export default function CashCollections() {
     mutationFn: (data: CashCollectionFormData) => {
       const formattedData = {
         ...data,
-        collectionDate: new Date(data.collectionDate),
+        collectionDate: data.collectionDate, // Keep as string, let server transform
       };
       return apiRequest("/api/cash-collections", "POST", formattedData);
     },
@@ -64,7 +64,7 @@ export default function CashCollections() {
     mutationFn: ({ id, data }: { id: string; data: CashCollectionFormData }) => {
       const formattedData = {
         ...data,
-        collectionDate: new Date(data.collectionDate),
+        collectionDate: data.collectionDate, // Keep as string, let server transform
       };
       return apiRequest(`/api/cash-collections/${id}`, "PATCH", formattedData);
     },
@@ -91,6 +91,7 @@ export default function CashCollections() {
   });
 
   const form = useForm<CashCollectionFormData>({
+    resolver: zodResolver(insertCashCollectionSchema.omit({ collectedBy: true })),
     defaultValues: {
       amount: "",
       currency: "JMD",
@@ -105,6 +106,7 @@ export default function CashCollections() {
   });
 
   const editForm = useForm<CashCollectionFormData>({
+    resolver: zodResolver(insertCashCollectionSchema.omit({ collectedBy: true })),
     defaultValues: {
       amount: "",
       currency: "JMD",
