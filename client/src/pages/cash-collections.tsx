@@ -10,10 +10,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, DollarSign, CreditCard, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, DollarSign, CreditCard, Eye, Edit, Trash2, Calendar, Filter } from "lucide-react";
 import { insertCashCollectionSchema, type CashCollection, type InsertCashCollection } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import { format } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -34,8 +34,15 @@ export default function CashCollections() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDateRangeDialogOpen, setIsDateRangeDialogOpen] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Get current user info
+  const { data: user } = useQuery({ queryKey: ["/api/auth/me"] });
+  const isAdmin = user?.role === "administrator";
 
   const { data: collections = [], isLoading } = useQuery<CashCollection[]>({
     queryKey: ["/api/cash-collections"],
@@ -149,14 +156,48 @@ export default function CashCollections() {
     setIsViewDialogOpen(true);
   };
 
-  // Calculate totals
-  const totalCash = collections
-    .filter((c: CashCollection) => c.type === 'cash')
-    .reduce((sum: number, c: CashCollection) => sum + parseFloat(c.amount), 0);
+  // Calculate date-based totals
+  const today = new Date();
+  const past7Days = subDays(today, 7);
+  const past30Days = subDays(today, 30);
 
-  const totalCheques = collections
-    .filter((c: CashCollection) => c.type === 'cheque')
-    .reduce((sum: number, c: CashCollection) => sum + parseFloat(c.amount), 0);
+  const getFilteredCollections = (dateFilter: 'today' | '7days' | '30days' | 'custom' | 'all') => {
+    return collections.filter((c: CashCollection) => {
+      const collectionDate = new Date(c.collectionDate);
+      switch (dateFilter) {
+        case 'today':
+          return isWithinInterval(collectionDate, { start: startOfDay(today), end: endOfDay(today) });
+        case '7days':
+          return isWithinInterval(collectionDate, { start: startOfDay(past7Days), end: endOfDay(today) });
+        case '30days':
+          return isWithinInterval(collectionDate, { start: startOfDay(past30Days), end: endOfDay(today) });
+        case 'custom':
+          if (!startDate || !endDate) return false;
+          return isWithinInterval(collectionDate, { 
+            start: startOfDay(new Date(startDate)), 
+            end: endOfDay(new Date(endDate)) 
+          });
+        default:
+          return true;
+      }
+    });
+  };
+
+  const calculateTotals = (filterType: 'today' | '7days' | '30days' | 'custom' | 'all') => {
+    const filtered = getFilteredCollections(filterType);
+    const cash = filtered
+      .filter((c: CashCollection) => c.type === 'cash' && c.currency === 'JMD')
+      .reduce((sum, c) => sum + parseFloat(c.amount), 0);
+    const cheques = filtered
+      .filter((c: CashCollection) => c.type === 'cheque' && c.currency === 'JMD')
+      .reduce((sum, c) => sum + parseFloat(c.amount), 0);
+    return { cash, cheques, total: cash + cheques };
+  };
+
+  const todayTotals = calculateTotals('today');
+  const past7DaysTotals = calculateTotals('7days');
+  const past30DaysTotals = calculateTotals('30days');
+  const customTotals = startDate && endDate ? calculateTotals('custom') : { cash: 0, cheques: 0, total: 0 };
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-64">Loading cash collections...</div>;
@@ -344,41 +385,119 @@ export default function CashCollections() {
         </Dialog>
       </div>
 
+      {/* Date Filter Controls */}
+      {isAdmin && (
+        <div className="flex justify-end mb-4">
+          <Dialog open={isDateRangeDialogOpen} onOpenChange={setIsDateRangeDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" data-testid="button-date-filter">
+                <Calendar className="w-4 h-4 mr-2" />
+                Custom Date Range
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Select Date Range</DialogTitle>
+                <DialogDescription>View collections for a specific date range</DialogDescription>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="start-date">Start Date</Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    data-testid="input-start-date"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="end-date">End Date</Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    data-testid="input-end-date"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button variant="outline" onClick={() => setIsDateRangeDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={() => setIsDateRangeDialogOpen(false)} data-testid="button-apply-filter">
+                  Apply Filter
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cash</CardTitle>
+            <CardTitle className="text-sm font-medium">Today</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600" data-testid="today-total">
+              JMD ${todayTotals.total.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cash: ${todayTotals.cash.toFixed(2)} | Cheques: ${todayTotals.cheques.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Past 7 Days</CardTitle>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600" data-testid="week-total">
+              JMD ${past7DaysTotals.total.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cash: ${past7DaysTotals.cash.toFixed(2)} | Cheques: ${past7DaysTotals.cheques.toFixed(2)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Past 30 Days</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="total-cash">
-              JMD ${totalCash.toFixed(2)}
+            <div className="text-2xl font-bold text-purple-600" data-testid="month-total">
+              JMD ${past30DaysTotals.total.toFixed(2)}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Cash: ${past30DaysTotals.cash.toFixed(2)} | Cheques: ${past30DaysTotals.cheques.toFixed(2)}
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cheques</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600" data-testid="total-cheques">
-              JMD ${totalCheques.toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Grand Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600" data-testid="grand-total">
-              JMD ${(totalCash + totalCheques).toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
+        {isAdmin && startDate && endDate && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Custom Range</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600" data-testid="custom-total">
+                JMD ${customTotals.total.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cash: ${customTotals.cash.toFixed(2)} | Cheques: ${customTotals.cheques.toFixed(2)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {format(new Date(startDate), "MMM dd")} - {format(new Date(endDate), "MMM dd, yyyy")}
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Collections Table */}
@@ -440,22 +559,25 @@ export default function CashCollections() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(collection)}
-                            data-testid={`button-edit-${collection.id}`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700"
-                                data-testid={`button-delete-${collection.id}`}
-                              >
+                          {isAdmin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditDialog(collection)}
+                              data-testid={`button-edit-${collection.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700"
+                                  data-testid={`button-delete-${collection.id}`}
+                                >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </AlertDialogTrigger>
@@ -476,7 +598,8 @@ export default function CashCollections() {
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
-                          </AlertDialog>
+                            </AlertDialog>
+                          )}
                         </div>
                       </td>
                     </tr>
