@@ -584,7 +584,10 @@ export const endOfDaySummaries = pgTable("end_of_day_summaries", {
 });
 
 export const insertCashCollectionSchema = createInsertSchema(cashCollections, {
-  collectionDate: z.string().transform(transformDateTime),
+  collectionDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (val instanceof Date) return val;
+    return new Date(val);
+  }),
 }).omit({
   id: true,
   createdAt: true,

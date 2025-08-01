@@ -91,7 +91,6 @@ export default function CashCollections() {
   });
 
   const form = useForm<CashCollectionFormData>({
-    resolver: zodResolver(insertCashCollectionSchema.omit({ collectedBy: true })),
     defaultValues: {
       amount: "",
       currency: "JMD",
@@ -106,7 +105,6 @@ export default function CashCollections() {
   });
 
   const editForm = useForm<CashCollectionFormData>({
-    resolver: zodResolver(insertCashCollectionSchema.omit({ collectedBy: true })),
     defaultValues: {
       amount: "",
       currency: "JMD",
