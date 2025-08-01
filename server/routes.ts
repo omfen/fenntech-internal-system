@@ -124,53 +124,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get categories for markup calculations
       const categories = await storage.getCategories();
       
-      // Process items with proper rounding based on roundingOption
+      // Process items WITHOUT individual rounding - we'll apply rounding to the total
       const processedItems = requestData.items?.map((item: any) => {
         const category = categories.find(c => c.id === item.categoryId);
         const costUsd = parseFloat(item.costPrice) || 0;
         const exchangeRate = parseFloat(requestData.exchangeRate) || 162;
         const quantity = parseInt(item.quantity) || 1;
         
-        // Calculate markup and GCT
+        // Calculate markup percentage and final price per item
         const markupPercentage = category ? parseFloat(category.markupPercentage.toString()) : 0;
-        const costJmd = costUsd * exchangeRate * quantity;
-        const sellingPrice = costJmd + (costJmd * markupPercentage / 100);
-        const gctAmount = sellingPrice * 0.15; // 15% GCT
-        const priceWithGct = sellingPrice + gctAmount;
-        
-        // Apply rounding based on roundingOption
-        let finalPrice = priceWithGct;
-        const roundingOption = requestData.roundingOption;
-        
-        if (roundingOption && roundingOption !== 'none') {
-          let roundingValue = 1;
-          if (roundingOption === 'nearest_5' || roundingOption === 5) {
-            roundingValue = 5;
-          } else if (roundingOption === 'nearest_10' || roundingOption === 10) {
-            roundingValue = 10;
-          } else if (roundingOption === 'nearest_50' || roundingOption === 50) {
-            roundingValue = 50;
-          } else if (roundingOption === 'nearest_100' || roundingOption === 100) {
-            roundingValue = 100;
-          }
-          
-          finalPrice = Math.round(priceWithGct / roundingValue) * roundingValue;
-        }
+        const markupMultiplier = 1 + (markupPercentage / 100);
+        const finalPriceUsd = costUsd * markupMultiplier;
+        const finalPriceJmd = finalPriceUsd * exchangeRate;
+        const totalFinalPriceJmd = finalPriceJmd * quantity;
         
         return {
           ...item,
-          costJmd: Math.round(costJmd * 100) / 100,
-          sellingPrice: Math.round(sellingPrice * 100) / 100,
-          finalPrice: Math.round(finalPrice * 100) / 100,
           markupPercentage,
           categoryName: category?.name || '',
+          finalPriceJmd: Math.round(finalPriceJmd * 100) / 100,
+          totalFinalPriceJmd: Math.round(totalFinalPriceJmd * 100) / 100,
+          costUsd,
+          quantity,
         };
       }) || [];
       
-      // Update the session data with processed items
+      // Calculate totals and apply rounding to the final total
+      const totalItemsUsd = processedItems.reduce((sum, item) => sum + (item.costUsd * item.quantity), 0);
+      const totalBeforeGct = processedItems.reduce((sum, item) => sum + item.totalFinalPriceJmd, 0);
+      const gctAmount = totalBeforeGct * 0.15; // 15% GCT
+      const beforeRounding = totalBeforeGct + gctAmount;
+      
+      // Apply rounding to the total based on roundingOption
+      const applyRounding = (amount: number, option: any) => {
+        if (!option || option === 'none') return amount;
+        
+        let roundingValue = 1;
+        if (option === 'nearest_5' || option === 5) {
+          roundingValue = 5;
+        } else if (option === 'nearest_10' || option === 10) {
+          roundingValue = 10;
+        } else if (option === 'nearest_50' || option === 50) {
+          roundingValue = 50;
+        } else if (option === 'nearest_100' || option === 100) {
+          roundingValue = 100;
+        }
+        
+        return Math.round(amount / roundingValue) * roundingValue;
+      };
+      
+      const finalTotalJmd = applyRounding(beforeRounding, requestData.roundingOption);
+      
+      // Update the session data with processed items and correct totals
       const sessionData = {
         ...requestData,
         items: processedItems,
+        totalItemsUsd: totalItemsUsd.toString(),
+        totalValue: finalTotalJmd.toString(),
         // Convert rounding option to numeric for storage
         roundingOption: (() => {
           const option = requestData.roundingOption;
