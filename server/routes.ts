@@ -1447,8 +1447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </html>
       `;
 
-      await transporter.sendMail({
-        from: emailUser,
+      await sgMail.send({
+        from: 'noreply@fenntech.com',
         to: emailData.recipient,
         subject: emailData.subject,
         html: htmlContent,
