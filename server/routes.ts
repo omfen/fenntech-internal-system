@@ -774,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `;
 
       await sgMail.send({
-        from: 'noreply@fenntechltd.com',
+        from: 'admin@fenntechltd.com',
         to: emailData.to,
         subject: emailData.subject,
         html: htmlContent,
@@ -807,7 +807,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         isConfigured: sendGridConfigured,
-        emailUser: sendGridConfigured ? 'noreply@fenntechltd.com' : null,
+        emailUser: sendGridConfigured ? 'admin@fenntechltd.com' : null,
         service: "SendGrid"
       });
     } catch (error) {
@@ -822,7 +822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         message: "SendGrid is configured via SENDGRID_API_KEY environment variable",
         service: "SendGrid",
-        fromEmail: "noreply@fenntechltd.com"
+        fromEmail: "admin@fenntechltd.com"
       });
     } catch (error) {
       console.error("Save email config error:", error);
@@ -862,7 +862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await sgMail.send({
-        from: 'noreply@fenntechltd.com', // Use a verified sender domain
+        from: 'admin@fenntechltd.com', // Use a verified sender domain
         to: testEmail,
         subject: "FennTech Email Configuration Test",
         html: htmlContent,
@@ -1270,7 +1270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `;
 
       await sgMail.send({
-        from: 'noreply@fenntechltd.com',
+        from: 'admin@fenntechltd.com',
         to: emailData.to,
         subject: emailData.subject,
         html: htmlContent,
@@ -1455,7 +1455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       `;
 
       await sgMail.send({
-        from: 'noreply@fenntechltd.com',
+        from: 'admin@fenntechltd.com',
         to: emailData.recipient,
         subject: emailData.subject,
         html: htmlContent,
@@ -2051,7 +2051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     `;
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntechltd.com',
+      from: process.env.EMAIL_USER || process.env.GMAIL_USER || 'admin@fenntechltd.com',
       to: workOrder.email,
       subject: statusInfo.subject,
       html: htmlContent,
@@ -2352,11 +2352,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companySettings = await storage.getCompanySettings();
       
       // Email configuration
-      const fromEmail = process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntechltd.com';
+      const fromEmail = process.env.EMAIL_USER || process.env.GMAIL_USER || 'admin@fenntechltd.com';
       const companyName = companySettings?.name || 'FennTech';
 
       const mailOptions = {
-        from: 'noreply@fenntechltd.com',
+        from: 'admin@fenntechltd.com',
         to: recipientEmail,
         subject: `Quotation ${quotation.quoteNumber} from ${companyName}`,
         html: `
@@ -2540,11 +2540,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companySettings = await storage.getCompanySettings();
       
       // Email configuration
-      const fromEmail = process.env.EMAIL_USER || process.env.GMAIL_USER || 'noreply@fenntechltd.com';
+      const fromEmail = process.env.EMAIL_USER || process.env.GMAIL_USER || 'admin@fenntechltd.com';
       const companyName = companySettings?.name || 'FennTech';
 
       const mailOptions = {
-        from: 'noreply@fenntechltd.com',
+        from: 'admin@fenntechltd.com',
         to: recipientEmail,
         subject: `Invoice ${invoice.invoiceNumber} from ${companyName}`,
         html: `
